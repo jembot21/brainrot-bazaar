@@ -262,6 +262,7 @@ function CharacterFactory.Build(definition, rarity, mutation, income, promptActi
 	local body = model:FindFirstChild("Body")
 	local accessory = model:FindFirstChild("Accessory")
 	model.PrimaryPart = body
+	model.WorldPivot = CFrame.new(0, 2, 0)
 	local label = Instance.new("BillboardGui")
 	label.Name = "BrainrotLabel"
 	label.Size = UDim2.fromOffset(260, 86)

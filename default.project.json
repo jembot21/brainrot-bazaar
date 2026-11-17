@@ -33,9 +33,9 @@
         "$properties": {
           "Anchored": true,
           "Color": [
-            0.38823,
-            0.37254,
-            0.38823
+            1.0,
+            0.7451,
+            0.2353
           ],
           "Locked": true,
           "Position": [

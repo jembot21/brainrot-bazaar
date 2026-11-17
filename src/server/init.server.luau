@@ -43,6 +43,15 @@ local function onPlayerAdded(player)
 			local angle = (plot:GetAttribute("PlotIndex") - 1) * math.pi / 4
 			character:PivotTo(CFrame.new(math.cos(angle) * 82, 11, math.sin(angle) * 82))
 		end
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			humanoid.Died:Connect(function()
+				task.wait(2)
+				if player.Parent == Players then
+					pcall(function() player:LoadCharacter() end)
+				end
+			end)
+		end
 	end)
 	player:LoadCharacter()
 end

@@ -15,6 +15,7 @@ local function part(parent, name, size, position, color, material)
 end
 
 function WorldBuilder.Build()
+	workspace.FallenPartsDestroyHeight = -60
 	local Lighting = game:GetService("Lighting")
 	Lighting.ClockTime = 14
 	Lighting.Brightness = 2
@@ -33,7 +34,7 @@ function WorldBuilder.Build()
 	local island = part(world, "PlazaIsland", Vector3.new(8, 250, 250), Vector3.new(0, -3, 0), Color3.fromRGB(96, 211, 124), Enum.Material.Grass)
 	island.Shape = Enum.PartType.Cylinder
 	island.Orientation = Vector3.new(0, 0, 90)
-	part(world, "BazaarFloor", Vector3.new(214, 2, 214), Vector3.new(0, 2, 0), Color3.fromRGB(255, 206, 120), Enum.Material.SmoothPlastic)
+	part(world, "BazaarFloor", Vector3.new(214, 2, 214), Vector3.new(0, 2, 0), Color3.fromRGB(255, 190, 60), Enum.Material.SmoothPlastic)
 	part(world, "PlazaFloor", Vector3.new(190, 0.2, 190), Vector3.new(0, 0.1, 0), Color3.fromRGB(214, 183, 140), Enum.Material.SmoothPlastic)
 	part(world, "ConveyorLane", Vector3.new(156, 1, 16), Vector3.new(0, 7, 0), Color3.fromRGB(50, 57, 70), Enum.Material.Metal)
 	part(world, "BeltRailA", Vector3.new(156, 0.5, 1), Vector3.new(0, 7.8, -8.5), Color3.fromRGB(72, 219, 251), Enum.Material.Neon)
@@ -72,7 +73,23 @@ function WorldBuilder.Build()
 		beacon.CanQuery = false
 		part(plot, "BaseFoundation", Vector3.new(30, 3, 26), center + Vector3.new(0, -2, 0), Color3.fromRGB(52, 92, 112), Enum.Material.Slate)
 		floor:SetAttribute("SafeZone", true)
-		local sign = part(plot, "OwnerSign", Vector3.new(14, 8, 1), center + Vector3.new(0, 5, -16), Color3.fromRGB(34, 48, 62))
+		local cream = Color3.fromRGB(255, 244, 214)
+		local woodDark = Color3.fromRGB(120, 78, 45)
+		part(plot, "BackWall", Vector3.new(36, 8, 1), center + Vector3.new(0, 4, -15.5), cream)
+		part(plot, "SideWallL", Vector3.new(1, 8, 10), center + Vector3.new(-17.5, 4, -11), cream)
+		part(plot, "SideWallR", Vector3.new(1, 8, 10), center + Vector3.new(17.5, 4, -11), cream)
+		for postIndex, position in ipairs({
+			Vector3.new(-17.5, 4.3, -15.5), Vector3.new(17.5, 4.3, -15.5),
+			Vector3.new(-17.5, 4.3, -6.5), Vector3.new(17.5, 4.3, -6.5),
+		}) do
+			part(plot, "Post" .. postIndex, Vector3.new(0.9, 8.6, 0.9), center + position, woodDark)
+		end
+		part(plot, "Counter", Vector3.new(30, 2.4, 2.2), center + Vector3.new(0, 1.7, -8.6), Color3.fromRGB(166, 108, 60))
+		for stripeIndex = 1, 6 do
+			local stripe = part(plot, "Awning" .. stripeIndex, Vector3.new(6.2, 0.35, 12), center + Vector3.new(-15.5 + (stripeIndex - 0.5) * 6.2, 8.9, -11), stripeIndex % 2 == 1 and plotColors[index] or Color3.fromRGB(245, 245, 245))
+			stripe.Orientation = Vector3.new(-16, 0, 0)
+		end
+		local sign = part(plot, "OwnerSign", Vector3.new(18, 4.5, 0.8), center + Vector3.new(0, 11.3, -13.5), Color3.fromRGB(34, 48, 62))
 		local gui = Instance.new("BillboardGui")
 		gui.Name = "OwnerBillboard"
 		gui.Size = UDim2.fromOffset(220, 70)

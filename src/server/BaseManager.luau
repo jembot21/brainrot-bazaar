@@ -37,6 +37,10 @@ function BaseManager.Init(economyModule, _characterFactory, remote, worldData)
 				if beacon then beacon.Transparency = 1 end
 			end
 			for player, state in pairs(economy.States) do
+				if state.plot then
+					local beacon = state.plot:FindFirstChild("HomeBeacon")
+					if beacon then beacon.Transparency = 0.55 end
+				end
 				local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 				if root and root.Position.Y < -2 then
 					local now = os.clock()
@@ -59,7 +63,7 @@ function BaseManager.Init(economyModule, _characterFactory, remote, worldData)
 				end
 				if state.carried and state.plot and root then
 					local beacon = state.plot:FindFirstChild("HomeBeacon")
-					if beacon then beacon.Transparency = 0.3 end
+					if beacon then beacon.Transparency = 0.25 end
 					local placed = false
 					for _, pad in ipairs(state.plot.Pads:GetChildren()) do
 						if not pad:GetAttribute("Occupied") then
