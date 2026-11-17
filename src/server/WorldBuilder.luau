@@ -15,7 +15,6 @@ local function part(parent, name, size, position, color, material)
 end
 
 function WorldBuilder.Build()
-	workspace.FallenPartsDestroyHeight = -60
 	local Lighting = game:GetService("Lighting")
 	Lighting.ClockTime = 14
 	Lighting.Brightness = 2
