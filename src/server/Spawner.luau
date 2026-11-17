@@ -88,6 +88,7 @@ function Spawner.Init(data, economy, characterFactory, events, bases, shrineProm
 				end
 				state.cash -= cost
 				state.carried = { model = model, income = income, name = definition.name, rarity = rarityName, mutation = mutation and mutation.name }
+				prompt.Enabled = false
 				entry.caught = true
 				model:SetAttribute("OwnerUserId", 0)
 				Events.Feedback:FireClient(player, "owned", definition.name)

@@ -15,26 +15,36 @@ local function part(parent, name, size, position, color, material)
 end
 
 function WorldBuilder.Build()
+	local Lighting = game:GetService("Lighting")
+	Lighting.ClockTime = 14
+	Lighting.Brightness = 2
+	Lighting.Ambient = Color3.fromRGB(128, 128, 140)
+	Lighting.OutdoorAmbient = Color3.fromRGB(150, 150, 165)
+	local plotColors = {
+		Color3.fromRGB(245, 92, 92), Color3.fromRGB(255, 159, 67), Color3.fromRGB(254, 202, 87), Color3.fromRGB(88, 214, 141),
+		Color3.fromRGB(72, 219, 251), Color3.fromRGB(84, 160, 255), Color3.fromRGB(165, 94, 234), Color3.fromRGB(253, 121, 168),
+	}
 	local existing = workspace:FindFirstChild("BazaarWorld")
 	if existing then existing:Destroy() end
 	local world = Instance.new("Folder")
 	world.Name = "BazaarWorld"
 	world.Parent = workspace
 
-	local island = part(world, "PlazaIsland", Vector3.new(8, 250, 250), Vector3.new(0, -3, 0), Color3.fromRGB(82, 160, 111), Enum.Material.Grass)
+	local island = part(world, "PlazaIsland", Vector3.new(8, 250, 250), Vector3.new(0, -3, 0), Color3.fromRGB(96, 211, 124), Enum.Material.Grass)
 	island.Shape = Enum.PartType.Cylinder
 	island.Orientation = Vector3.new(0, 0, 90)
-	part(world, "BazaarFloor", Vector3.new(214, 2, 214), Vector3.new(0, 2, 0), Color3.fromRGB(238, 218, 169), Enum.Material.Sand)
+	part(world, "BazaarFloor", Vector3.new(214, 2, 214), Vector3.new(0, 2, 0), Color3.fromRGB(255, 206, 120), Enum.Material.SmoothPlastic)
 	part(world, "PlazaFloor", Vector3.new(190, 0.2, 190), Vector3.new(0, 0.1, 0), Color3.fromRGB(214, 183, 140), Enum.Material.SmoothPlastic)
 	part(world, "ConveyorLane", Vector3.new(156, 1, 16), Vector3.new(0, 7, 0), Color3.fromRGB(50, 57, 70), Enum.Material.Metal)
+	part(world, "BeltRailA", Vector3.new(156, 0.5, 1), Vector3.new(0, 7.8, -8.5), Color3.fromRGB(72, 219, 251), Enum.Material.Neon)
+	part(world, "BeltRailB", Vector3.new(156, 0.5, 1), Vector3.new(0, 7.8, 8.5), Color3.fromRGB(253, 121, 168), Enum.Material.Neon)
 	for x = -65, 65, 26 do
 		for _, z in ipairs({ -6, 6 }) do
 			part(world, "ConveyorLeg", Vector3.new(2, 6.5, 2), Vector3.new(x, 3.25, z), Color3.fromRGB(75, 82, 92), Enum.Material.Metal)
 		end
 	end
-	for _, x in ipairs({ -80, 80 }) do
-		part(world, "ConveyorEndZone", Vector3.new(5, 2, 20), Vector3.new(x, 8.5, 0), Color3.fromRGB(242, 93, 88), Enum.Material.Neon)
-	end
+	part(world, "ConveyorEndZone", Vector3.new(5, 2, 20), Vector3.new(-80, 8.5, 0), Color3.fromRGB(88, 214, 141), Enum.Material.Neon)
+	part(world, "ConveyorEndZone", Vector3.new(5, 2, 20), Vector3.new(80, 8.5, 0), Color3.fromRGB(242, 93, 88), Enum.Material.Neon)
 	for x = -68, 68, 12 do
 		part(world, "BeltStripe", Vector3.new(1, 0.25, 13), Vector3.new(x, 7.65, 0), Color3.fromRGB(123, 140, 152), Enum.Material.Metal)
 	end
@@ -46,13 +56,20 @@ function WorldBuilder.Build()
 	for index = 1, 8 do
 		local angle = (index - 1) * math.pi / 4
 		local center = Vector3.new(math.cos(angle) * 82, 3.5, math.sin(angle) * 82)
+		local path = part(world, "PlotPath", Vector3.new(76, 0.25, 9), Vector3.new(math.cos(angle) * 45, 3.12, math.sin(angle) * 45), plotColors[index], Enum.Material.SmoothPlastic)
+		path.Orientation = Vector3.new(0, -math.deg(angle), 0)
 		local plot = Instance.new("Model")
 		plot.Name = "Plot" .. index
 		plot:SetAttribute("PlotIndex", index)
 		plot:SetAttribute("OwnerUserId", 0)
 		plot:SetAttribute("LockedUntil", 0)
 		plot.Parent = bases
-		local floor = part(plot, "BaseFloor", Vector3.new(38, 1, 34), center, Color3.fromRGB(76, 134, 164))
+		local floor = part(plot, "BaseFloor", Vector3.new(38, 1, 34), center, plotColors[index])
+		local beacon = part(plot, "HomeBeacon", Vector3.new(3, 72, 3), center + Vector3.new(0, 39, 0), plotColors[index], Enum.Material.Neon)
+		beacon.Transparency = 1
+		beacon.CanCollide = false
+		beacon.CanTouch = false
+		beacon.CanQuery = false
 		part(plot, "BaseFoundation", Vector3.new(30, 3, 26), center + Vector3.new(0, -2, 0), Color3.fromRGB(52, 92, 112), Enum.Material.Slate)
 		floor:SetAttribute("SafeZone", true)
 		local sign = part(plot, "OwnerSign", Vector3.new(14, 8, 1), center + Vector3.new(0, 5, -16), Color3.fromRGB(34, 48, 62))

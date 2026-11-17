@@ -48,7 +48,7 @@ function CharacterFactory.Build(definition, rarity, mutation, income, promptActi
 	text.Size = UDim2.fromScale(1, 1)
 	text.BackgroundTransparency = 1
 	text.Text = string.format("%s%s\n%s  |  $%d/s", mutation and (mutation.name .. " ") or "", definition.name, definition.rarity, income)
-	text.TextColor3 = Color3.new(1, 1, 1)
+	text.TextColor3 = rarity.color
 	text.TextStrokeColor3 = Color3.fromRGB(24, 29, 36)
 	text.TextStrokeTransparency = 0.1
 	text.TextScaled = true
