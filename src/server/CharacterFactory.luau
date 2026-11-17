@@ -51,6 +51,13 @@ end
 local function feet(c, color, spacing)
 	for _, side in ipairs({-1, 1}) do part(c, "Foot", V(0.8, 0.4, 1.1), V(side * (spacing or 0.65), 0.2, -0.15), color or dark) end
 end
+local function sneakers(c, legColor)
+	for _, s in ipairs({-1, 1}) do
+		part(c, "Leg", V(0.55, 0.6, 0.55), V(s * 0.65, 0.72, -0.1), legColor)
+		part(c, "Shoe", V(0.8, 0.42, 1.5), V(s * 0.65, 0.21, -0.3), white)
+		part(c, "Sole", V(0.85, 0.16, 1.55), V(s * 0.65, 0.08, -0.3), s == -1 and C(50, 110, 255) or C(245, 70, 70))
+	end
+end
 local function crown(c, position, diameter)
 	cylinder(c, "Accessory", diameter, 0.65, position, gold)
 	for i = 1, 4 do
@@ -67,7 +74,7 @@ builders["Sir Bounce Banana"] = function(c)
 	part(c, "BrownTip", V(0.45, 0.4, 0.5), V(0.75, 4.15, 0), C(90, 56, 30))
 	crown(c, V(0.5, 4.65, 0), 1.6)
 	addFace(body, 0.4, -1.22, 0.6)
-	feet(c, C(90, 56, 30))
+	sneakers(c, c.bodyColor)
 end
 builders["Pigeon Barry"] = function(c)
 	makeBody(c, V(3.6, 3.6, 3.6), Enum.PartType.Ball)
@@ -76,8 +83,8 @@ builders["Pigeon Barry"] = function(c)
 	addFace(head, 0.25, -0.85, 0.48)
 	for _, s in ipairs({-1, 1}) do
 		part(c, "Wing", V(0.35, 1.6, 2.2), V(s * 1.85, 2.2, 0), c.bodyColor * 0.8, V(0, 0, -s * 20))
-		cylinder(c, "Leg", 0.25, 0.6, V(s * 0.65, 0.3, 0), C(245, 157, 48))
 	end
+	sneakers(c, C(245, 157, 48))
 	part(c, "Tail", V(1.5, 0.3, 1.1), V(0, 2.4, 1.9), c.bodyColor * 0.8, V(25, 0, 0))
 	part(c, "Accessory", V(0.25, 1.1, 0.5), V(0, 4.8, -0.9), C(108, 202, 245), V(0, 0, 20))
 end
@@ -91,6 +98,11 @@ builders["Toaster Todd"] = function(c)
 	part(c, "ToastInner", V(1.4, 1.3, 0.5), V(0, 4.3, -0.03), C(232, 190, 130), V(0, 0, 8))
 	part(c, "Lever", V(0.5, 0.3, 0.65), V(1.95, 2.2, 0), dark)
 	addFace(body, 0.5, -1.42, 0.8)
+	for i = 0, 4 do
+		local x = -0.8 + i * 0.4
+		local link = part(c, "GoldChain", V(0.34, 0.34, 0.18), V(x, 2.9 - x^2 * 0.35, -1.45), gold)
+		link.Material = Enum.Material.Metal
+	end
 	feet(c)
 end
 builders["Disco Broccoli Bro"] = function(c)
@@ -107,6 +119,10 @@ builders["Disco Broccoli Bro"] = function(c)
 	part(c, "Sunglasses", V(2.2, 0.55, 0.2), V(0, 2.6, -0.78), dark)
 	part(c, "Mouth", V(0.9, 0.18, 0.1), V(0, 1.9, -0.8), dark)
 	feet(c, stalk)
+	for _, s in ipairs({-1, 1}) do
+		part(c, "UpperArm", V(0.85, 1.9, 0.85), V(s * 2.05, 2.5, 0), C(120, 220, 130), V(0, 0, s * -18))
+		ball(c, "Fist", 0.95, V(s * 2.6, 1.5, 0), C(120, 220, 130))
+	end
 end
 builders["Grandma Turbo"] = function(c)
 	local body = makeBody(c, V(3.6, 3.6, 3.6), Enum.PartType.Ball)
@@ -115,8 +131,8 @@ builders["Grandma Turbo"] = function(c)
 	for _, s in ipairs({-1, 1}) do
 		-- Dark rims sit behind smaller eye whites so the pupils remain visible.
 		cylinder(c, s == -1 and "Accessory" or "GlassesRim", 0.82, 0.12, V(s * 0.75, 2.5, -1.78), dark, V(90, 0, 0))
-		cylinder(c, "Wheel", 0.65, 0.35, V(s * 1.35, 0.325, 0), dark, V(0, 0, 90))
 	end
+	sneakers(c, C(238, 154, 183))
 	part(c, "GlassesBridge", V(0.8, 0.12, 0.1), V(0, 2.5, -1.91), dark)
 	part(c, "Shawl", V(3.9, 0.5, 3.9), V(0, 1.1, 0), C(150, 110, 190))
 	cylinder(c, "Turbo", 1.1, 1.6, V(0, 2.2, 2), C(120, 128, 140), V(90, 0, 0))
@@ -138,6 +154,7 @@ builders["Cactus Carl"] = function(c)
 	end
 	ball(c, "Accessory", 0.55, V(0, 4.5, 0), gold)
 	part(c, "PotRim", V(3.4, 0.7, 3.4), V(0, 0.35, 0), C(176, 96, 64))
+	sneakers(c, c.bodyColor)
 	addFace(c.model.Body, 0.5, -0.82, 0.43)
 end
 builders["Croissant Dragon Draco"] = function(c)
@@ -150,7 +167,7 @@ builders["Croissant Dragon Draco"] = function(c)
 		cylinder(c, s == -1 and "Accessory" or "Horn", 0.56, 1, V(s * 0.65, 3.75, 0), C(240, 230, 200), V(0, 0, -s * 25))
 	end
 	addFace(body, 0.4, -1.38, 0.65)
-	feet(c, C(120, 76, 40))
+	sneakers(c, c.bodyColor)
 end
 builders["WiFi Wizard Wally"] = function(c)
 	local body = makeBody(c, V(3.4, 3.4, 3))
@@ -186,6 +203,7 @@ builders["Moon Cheese Golem"] = function(c)
 	ball(c, "Accessory", 0.65, V(0, 5.15, 0), C(255, 226, 121))
 	for _, s in ipairs({-1, 1}) do ball(c, "MoonTip", 0.65, V(s * 0.45, 4.85, 0), C(255, 226, 121)) end
 	addFace(body, 0.5, -1.73, 1)
+	part(c, "Sunglasses", V(2.6, 0.6, 0.2), V(0, 2.55, -1.75), C(25, 28, 34))
 end
 builders["Galaxy Brain Octopus"] = function(c)
 	local body = makeBody(c, V(3.4, 3.4, 3.4), Enum.PartType.Ball)

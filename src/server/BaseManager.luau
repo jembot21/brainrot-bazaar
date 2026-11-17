@@ -28,6 +28,7 @@ function BaseManager.Init(economyModule, _characterFactory, remote, worldData)
 		end
 	end
 	local lastWrongBaseWarning = {}
+	local lastRescueTime = {}
 	task.spawn(function()
 		while true do
 			task.wait(0.15)
@@ -37,6 +38,25 @@ function BaseManager.Init(economyModule, _characterFactory, remote, worldData)
 			end
 			for player, state in pairs(economy.States) do
 				local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+				if root and root.Position.Y < -2 then
+					local now = os.clock()
+					if now - (lastRescueTime[player] or -math.huge) >= 2 then
+						local plotX, plotZ = player:GetAttribute("PlotX"), player:GetAttribute("PlotZ")
+						local target = CFrame.new(0, 11, 0)
+						if plotX ~= nil and plotZ ~= nil then
+							target = CFrame.new(plotX, 11, plotZ)
+						elseif state.plot then
+							local index = state.plot:GetAttribute("PlotIndex")
+							if index then
+								local angle = (index - 1) * math.pi / 4
+								target = CFrame.new(math.cos(angle) * 82, 11, math.sin(angle) * 82)
+							end
+						end
+						player.Character:PivotTo(target)
+						lastRescueTime[player] = now
+						feedback:FireClient(player, "message", "BACK TO YOUR BASE!")
+					end
+				end
 				if state.carried and state.plot and root then
 					local beacon = state.plot:FindFirstChild("HomeBeacon")
 					if beacon then beacon.Transparency = 0.3 end

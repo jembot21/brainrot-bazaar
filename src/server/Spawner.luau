@@ -67,6 +67,7 @@ function Spawner.Init(data, economy, characterFactory, events, bases, shrineProm
 	task.spawn(function()
 		while true do
 			task.wait(3.5)
+			local ok, err = pcall(function()
 			local rarityName, rarity = chooseRarity()
 			local definition
 			local candidates = {}
@@ -100,6 +101,8 @@ function Spawner.Init(data, economy, characterFactory, events, bases, shrineProm
 				if model.Parent and not entry.caught then model:Destroy() end
 				for i, value in ipairs(active) do if value == entry then table.remove(active, i); break end end
 			end)
+			end)
+			if not ok then warn("Brainrot spawn failed:", err) end
 		end
 	end)
 end
