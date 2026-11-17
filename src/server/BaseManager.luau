@@ -65,17 +65,14 @@ function BaseManager.Init(economyModule, _characterFactory, remote, worldData)
 					local beacon = state.plot:FindFirstChild("HomeBeacon")
 					if beacon then beacon.Transparency = 0.25 end
 					local placed = false
-					local floor = state.plot:FindFirstChild("BaseFloor")
-					if floor then
-						local delta = root.Position - floor.Position
-						if Vector2.new(delta.X, delta.Z).Magnitude <= 21 and math.abs(delta.Y) <= 7 then
-							for _, pad in ipairs(state.plot.Pads:GetChildren()) do
-								if not pad:GetAttribute("Occupied") then
-									BaseManager.OnPadTouched(state.plot, pad, root)
-									placed = true
-									break
+					for _, pad in ipairs(state.plot.Pads:GetChildren()) do
+						if not pad:GetAttribute("Occupied") then
+							local delta = root.Position - pad.Position
+							if Vector2.new(delta.X, delta.Z).Magnitude <= 8.5 and math.abs(delta.Y) <= 12 then
+								BaseManager.OnPadTouched(state.plot, pad, root)
+								placed = true
+								break
 								end
-							end
 						end
 					end
 					if not placed then
@@ -182,7 +179,12 @@ function BaseManager.Steal(player, model)
 			local accessory = model:FindFirstChild("Accessory")
 			local prompt = accessory and accessory:FindFirstChild("BrainrotPrompt")
 			if prompt then prompt.Enabled = false end
-			model:PivotTo(player.Character:GetPivot() * CFrame.new(0, 3, -5))
+			local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+			if root then
+				local look = root.CFrame.LookVector
+				local yaw = math.atan2(-look.X, -look.Z)
+				model:PivotTo(CFrame.new(root.Position + Vector3.new(0, 4.3, 0)) * CFrame.Angles(0, yaw, 0))
+			end
 			feedback:FireClient(player, "message", "STOLEN! RUN IT HOME")
 			economy.Sync(owner)
 			return

@@ -59,7 +59,10 @@ function Spawner.Init(data, economy, characterFactory, events, bases, shrineProm
 		end
 		for player, state in pairs(Economy.States) do
 			if state.carried and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-				state.carried.model:PivotTo(player.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3.5, -3))
+				local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+				local look = root.CFrame.LookVector
+				local yaw = math.atan2(-look.X, -look.Z)
+				state.carried.model:PivotTo(CFrame.new(root.Position + Vector3.new(0, 4.3, 0)) * CFrame.Angles(0, yaw, 0))
 			end
 		end
 	end)
