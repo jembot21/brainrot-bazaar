@@ -18,13 +18,17 @@ rojo build default.project.json --output game.rbxl && mkdir -p out && MAKEFUN_OU
 
 ## How to play
 
-Head to the conveyor and use a brainrot's Buy prompt to catch one you can afford.
-You can carry one brainrot at a time, so bring your catch back to your assigned base.
-Walk onto an empty base pad to place it and start earning cash every second.
-Watch your $/s grow as you fill the six pads with more valuable catches.
-Use the security prompt by your base sign to lock your collection for 60 seconds.
-Unlocked bases can be raided: use a placed brainrot's Steal prompt, then carry it home.
-When the tsunami warning appears, you have ten seconds to hurry back to your own safe base.
-Getting caught outside by the wave destroys your carried brainrot and takes ten percent of your cash.
-Save $25,000 and use the rebirth shrine to reset your cash and collection for a permanent income multiplier.
-Each rebirth adds another 0.5 to that multiplier, helping your next collection earn faster.
+Visit the conveyor and activate Buy on a mascot that fits your budget.
+Carry your purchase to your assigned shop; arriving beside an empty pad places it automatically.
+Each placed mascot pays cash every second, and your shop has six pads to fill.
+Seek rarer characters and Gold, Diamond, or Rainbow mutations to increase your earnings.
+
+The security prompt at your shop sign toggles a 60-second lock.
+An unlocked collection can be raided: activate Steal on another player's mascot and take it home.
+When the tsunami alert sounds, return to your own base within ten seconds.
+A wave that catches you outside removes your carried mascot and ten percent of your cash.
+
+At $25,000, the rebirth shrine lets you exchange your cash and collection for a lasting income boost.
+Every rebirth increases your multiplier by 0.5.
+
+[Play Brainrot Bazaar](https://www.roblox.com/games/106961934406857)

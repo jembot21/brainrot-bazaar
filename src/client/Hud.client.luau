@@ -1,3 +1,5 @@
+-- Render the wallet, discovered mascot index, feedback, and tsunami warning.
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
@@ -13,20 +15,20 @@ gui.IgnoreGuiInset = true
 gui.Parent = player:WaitForChild("PlayerGui")
 
 local function label(parent, name, size, position, text, color, textSize)
-	local item = Instance.new("TextLabel")
-	item.Name = name
-	item.Size = size
-	item.Position = position
-	item.BackgroundTransparency = 1
-	item.Text = text
-	item.TextColor3 = color
-	item.TextStrokeColor3 = Color3.fromRGB(25, 33, 40)
-	item.TextStrokeTransparency = 0.25
-	item.TextSize = textSize
-	item.Font = Enum.Font.GothamBold
-	item.TextXAlignment = Enum.TextXAlignment.Center
-	item.Parent = parent
-	return item
+    local item = Instance.new("TextLabel")
+    item.Name = name
+    item.Size = size
+    item.Position = position
+    item.BackgroundTransparency = 1
+    item.Text = text
+    item.TextColor3 = color
+    item.TextStrokeColor3 = Color3.fromRGB(25, 33, 40)
+    item.TextStrokeTransparency = 0.25
+    item.TextSize = textSize
+    item.Font = Enum.Font.GothamBold
+    item.TextXAlignment = Enum.TextXAlignment.Center
+    item.Parent = parent
+    return item
 end
 
 local top = Instance.new("Frame")
@@ -80,48 +82,50 @@ layout.Parent = list
 local owned = {}
 local rows = {}
 for index, character in ipairs(data.Cast) do
-	local row = Instance.new("TextLabel")
-	row.Name = "Entry" .. index
-	row.Size = UDim2.new(1, 0, 0, 24)
-	row.BackgroundTransparency = 1
-	row.Text = "-  " .. character.name
-	row.TextXAlignment = Enum.TextXAlignment.Left
-	row.TextColor3 = Color3.fromRGB(207, 215, 219)
-	row.TextSize = 15
-	row.Font = Enum.Font.GothamMedium
-	row.Parent = list
-	rows[character.name] = row
+    local row = Instance.new("TextLabel")
+    row.Name = "Entry" .. index
+    row.Size = UDim2.new(1, 0, 0, 24)
+    row.BackgroundTransparency = 1
+    row.Text = "-  " .. character.name
+    row.TextXAlignment = Enum.TextXAlignment.Left
+    row.TextColor3 = Color3.fromRGB(207, 215, 219)
+    row.TextSize = 15
+    row.Font = Enum.Font.GothamMedium
+    row.Parent = list
+    rows[character.name] = row
 end
 
 local function update()
-	cash.Text = "$" .. tostring(player:GetAttribute("Cash") or 150)
-	details.Text = "$" .. tostring(player:GetAttribute("Income") or 0) .. " / sec     x" .. string.format("%.1f", player:GetAttribute("Multiplier") or 1) .. " income"
-	local count = 0
-	for name, row in pairs(rows) do
-		if owned[name] then
-			count += 1
-			row.Text = "✓  " .. name
-			row.TextColor3 = Color3.fromRGB(112, 235, 164)
-		end
-	end
-	collection.Title.Text = "BAZAAR INDEX  " .. count .. "/12"
+    cash.Text = "$" .. tostring(player:GetAttribute("Cash") or 150)
+    details.Text = "$" .. tostring(player:GetAttribute("Income") or 0) .. " / sec     x" .. string.format("%.1f", player:GetAttribute("Multiplier") or 1) .. " income"
+    local count = 0
+    for name, row in pairs(rows) do
+        if owned[name] then
+            count += 1
+            row.Text = "✓  " .. name
+            row.TextColor3 = Color3.fromRGB(112, 235, 164)
+        end
+    end
+    collection.Title.Text = "BAZAAR INDEX  " .. count .. "/12"
 end
 
 for _, attribute in ipairs({ "Cash", "Income", "Multiplier" }) do player:GetAttributeChangedSignal(attribute):Connect(update) end
 feedbackEvent.OnClientEvent:Connect(function(kind, text)
-	if kind == "owned" then owned[text] = true; update(); return end
-	if kind == "message" then
-		message.Text = text
-		message.Visible = true
-		task.delay(3.5, function() if message.Text == text then message.Visible = false end end)
-	end
+    if kind == "owned" then
+        owned[text] = true; update(); return
+    end
+    if kind == "message" then
+        message.Text = text
+        message.Visible = true
+        task.delay(3.5, function() if message.Text == text then message.Visible = false end end)
+    end
 end)
 waveEvent.OnClientEvent:Connect(function(text)
-	waveBanner.Text = text
-	waveBanner.Visible = text ~= ""
-	if text ~= "" then
-		waveBanner.BackgroundTransparency = 0.12
-		for _ = 1, 3 do task.wait(0.15); waveBanner.BackgroundTransparency = 0.35; task.wait(0.15); waveBanner.BackgroundTransparency = 0.12 end
-	end
+    waveBanner.Text = text
+    waveBanner.Visible = text ~= ""
+    if text ~= "" then
+        waveBanner.BackgroundTransparency = 0.12
+        for _ = 1, 3 do task.wait(0.15); waveBanner.BackgroundTransparency = 0.35; task.wait(0.15); waveBanner.BackgroundTransparency = 0.12 end
+    end
 end)
 update()
