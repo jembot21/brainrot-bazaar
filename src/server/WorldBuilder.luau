@@ -35,7 +35,19 @@ function WorldBuilder.Build()
 	island.Orientation = Vector3.new(0, 0, 90)
 	part(world, "BazaarFloor", Vector3.new(214, 2, 214), Vector3.new(0, 2, 0), Color3.fromRGB(255, 190, 60), Enum.Material.SmoothPlastic)
 	part(world, "PlazaFloor", Vector3.new(190, 0.2, 190), Vector3.new(0, 0.1, 0), Color3.fromRGB(214, 183, 140), Enum.Material.SmoothPlastic)
+	part(world, "RunwayPlatform", Vector3.new(170, 7, 26), Vector3.new(0, 3.5, 0), Color3.fromRGB(124, 93, 250), Enum.Material.SmoothPlastic)
 	part(world, "ConveyorLane", Vector3.new(156, 1, 16), Vector3.new(0, 7, 0), Color3.fromRGB(50, 57, 70), Enum.Material.Metal)
+	for x = -72, 72, 18 do
+		for _, z in ipairs({ -5, 5 }) do
+			part(world, "RunwayDash", Vector3.new(6, 0.12, 1.6), Vector3.new(x, 7.57, z), Color3.fromRGB(255, 220, 80), Enum.Material.Neon)
+		end
+	end
+	for _, z in ipairs({ -9, 9 }) do
+		part(world, "StartArchPost", Vector3.new(1.2, 10, 1.2), Vector3.new(-80, 12, z), Color3.fromRGB(80, 220, 120), Enum.Material.Neon)
+		part(world, "FinishArchPost", Vector3.new(1.2, 10, 1.2), Vector3.new(80, 12, z), Color3.fromRGB(253, 121, 168), Enum.Material.Neon)
+	end
+	part(world, "StartArchBeam", Vector3.new(1.6, 2.2, 20), Vector3.new(-80, 17.4, 0), Color3.fromRGB(80, 220, 120), Enum.Material.Neon)
+	part(world, "FinishArchBeam", Vector3.new(1.6, 2.2, 20), Vector3.new(80, 17.4, 0), Color3.fromRGB(253, 121, 168), Enum.Material.Neon)
 	part(world, "BeltRailA", Vector3.new(156, 0.5, 1), Vector3.new(0, 7.8, -8.5), Color3.fromRGB(72, 219, 251), Enum.Material.Neon)
 	part(world, "BeltRailB", Vector3.new(156, 0.5, 1), Vector3.new(0, 7.8, 8.5), Color3.fromRGB(253, 121, 168), Enum.Material.Neon)
 	for x = -65, 65, 26 do
