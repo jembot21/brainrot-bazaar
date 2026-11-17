@@ -65,13 +65,28 @@ function BaseManager.Init(economyModule, _characterFactory, remote, worldData)
 					local beacon = state.plot:FindFirstChild("HomeBeacon")
 					if beacon then beacon.Transparency = 0.25 end
 					local placed = false
-					for _, pad in ipairs(state.plot.Pads:GetChildren()) do
-						if not pad:GetAttribute("Occupied") then
-							local delta = root.Position - pad.Position
-							if Vector2.new(delta.X, delta.Z).Magnitude <= 6.5 and math.abs(delta.Y) <= 5 then
-								BaseManager.OnPadTouched(state.plot, pad, root)
-								placed = true
-								break
+					local floor = state.plot:FindFirstChild("BaseFloor")
+					if floor then
+						local delta = root.Position - floor.Position
+						if Vector2.new(delta.X, delta.Z).Magnitude <= 21 and math.abs(delta.Y) <= 7 then
+							for _, pad in ipairs(state.plot.Pads:GetChildren()) do
+								if not pad:GetAttribute("Occupied") then
+									BaseManager.OnPadTouched(state.plot, pad, root)
+									placed = true
+									break
+								end
+							end
+						end
+					end
+					if not placed then
+						for _, pad in ipairs(state.plot.Pads:GetChildren()) do
+							if not pad:GetAttribute("Occupied") then
+								local delta = root.Position - pad.Position
+								if Vector2.new(delta.X, delta.Z).Magnitude <= 6.5 and math.abs(delta.Y) <= 5 then
+									BaseManager.OnPadTouched(state.plot, pad, root)
+									placed = true
+									break
+								end
 							end
 						end
 					end

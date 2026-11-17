@@ -95,7 +95,7 @@ function Spawner.Init(data, economy, characterFactory, events, bases, shrineProm
 				Events.Feedback:FireClient(player, "owned", definition.name)
 				Events.Feedback:FireClient(player, "cash", income)
 				Economy.Sync(player)
-				Events.Feedback:FireClient(player, "message", definition.name .. " caught! Bring it to a base pad.")
+				Events.Feedback:FireClient(player, "message", "GOT IT! FOLLOW THE LIGHT PILLAR TO YOUR SHOP - IT PLACES ITSELF WHEN YOU ARRIVE")
 			end)
 			task.delay(18, function()
 				if model.Parent and not entry.caught then model:Destroy() end
