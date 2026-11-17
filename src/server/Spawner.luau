@@ -53,7 +53,7 @@ function Spawner.Init(data, economy, characterFactory, events, bases, shrineProm
 			local entry = active[index]
 			if entry.model.Parent and not entry.caught then
 				entry.progress += dt * 12
-				entry.model:PivotTo(CFrame.new(-74 + entry.progress, 7.6, 0))
+				entry.model:PivotTo(CFrame.new(-74 + entry.progress, 9.5, 0))
 				if entry.progress >= 148 then entry.model:Destroy(); table.remove(active, index) end
 			end
 		end
@@ -75,7 +75,7 @@ function Spawner.Init(data, economy, characterFactory, events, bases, shrineProm
 			local mutation = chooseMutation()
 			local income = rarity.incomePerSecond * (mutation and mutation.multiplier or 1)
 			local model, prompt = Factory.Build(definition, rarity, mutation, income, "Buy $" .. math.floor(rarity.price * (mutation and mutation.multiplier or 1)))
-			model:PivotTo(CFrame.new(-74, 7.6, 0))
+			model:PivotTo(CFrame.new(-74, 9.5, 0))
 			model.Parent = workspace.BazaarWorld
 			local entry = { model = model, progress = 0, caught = false }
 			table.insert(active, entry)

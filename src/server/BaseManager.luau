@@ -55,7 +55,7 @@ function BaseManager.OnPadTouched(plot, pad, hit)
 	state.carried = nil
 	model:SetAttribute("OwnerUserId", player.UserId)
 	model:SetAttribute("Income", carried.income)
-	model:PivotTo(CFrame.new(pad.Position + Vector3.new(0, 0.3, 0)))
+	model:PivotTo(CFrame.new(pad.Position + Vector3.new(0, 2.3, 0)))
 	for _, object in ipairs(model:GetDescendants()) do
 		if object:IsA("BasePart") then object.Anchored = true end
 	end

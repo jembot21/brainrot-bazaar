@@ -25,10 +25,11 @@ function WorldBuilder.Build()
 	island.Shape = Enum.PartType.Cylinder
 	island.Orientation = Vector3.new(0, 0, 90)
 	part(world, "BazaarFloor", Vector3.new(214, 2, 214), Vector3.new(0, 2, 0), Color3.fromRGB(238, 218, 169), Enum.Material.Sand)
+	part(world, "PlazaFloor", Vector3.new(190, 0.2, 190), Vector3.new(0, 0.1, 0), Color3.fromRGB(214, 183, 140), Enum.Material.SmoothPlastic)
 	part(world, "ConveyorLane", Vector3.new(156, 1, 16), Vector3.new(0, 7, 0), Color3.fromRGB(50, 57, 70), Enum.Material.Metal)
 	for x = -65, 65, 26 do
 		for _, z in ipairs({ -6, 6 }) do
-			part(world, "ConveyorLeg", Vector3.new(2, 3.5, 2), Vector3.new(x, 4.75, z), Color3.fromRGB(75, 82, 92), Enum.Material.Metal)
+			part(world, "ConveyorLeg", Vector3.new(2, 6.5, 2), Vector3.new(x, 3.25, z), Color3.fromRGB(75, 82, 92), Enum.Material.Metal)
 		end
 	end
 	for _, x in ipairs({ -80, 80 }) do
@@ -52,6 +53,7 @@ function WorldBuilder.Build()
 		plot:SetAttribute("LockedUntil", 0)
 		plot.Parent = bases
 		local floor = part(plot, "BaseFloor", Vector3.new(38, 1, 34), center, Color3.fromRGB(76, 134, 164))
+		part(plot, "BaseFoundation", Vector3.new(30, 3, 26), center + Vector3.new(0, -2, 0), Color3.fromRGB(52, 92, 112), Enum.Material.Slate)
 		floor:SetAttribute("SafeZone", true)
 		local sign = part(plot, "OwnerSign", Vector3.new(14, 8, 1), center + Vector3.new(0, 5, -16), Color3.fromRGB(34, 48, 62))
 		local gui = Instance.new("BillboardGui")
@@ -91,10 +93,9 @@ function WorldBuilder.Build()
 
 	part(world, "RarityBoardPole", Vector3.new(2, 4.5, 2), Vector3.new(0, 5.25, -35), Color3.fromRGB(61, 67, 72), Enum.Material.Metal)
 	local board = part(world, "RarityBoard", Vector3.new(24, 15, 1), Vector3.new(0, 15, -35), Color3.fromRGB(35, 47, 58))
-	local boardGui = Instance.new("BillboardGui")
-	boardGui.Size = UDim2.fromOffset(420, 250)
-	boardGui.StudsOffset = Vector3.new(0, 9, 0)
-	boardGui.AlwaysOnTop = true
+	local boardGui = Instance.new("SurfaceGui")
+	boardGui.Face = Enum.NormalId.Front
+	boardGui.CanvasSize = Vector2.new(420, 250)
 	boardGui.Parent = board
 	local boardText = Instance.new("TextLabel")
 	boardText.Size = UDim2.fromScale(1, 1)
