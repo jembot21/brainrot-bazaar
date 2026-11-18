@@ -11,6 +11,7 @@ local BaseManager = require(script:WaitForChild("BaseManager"))
 local Spawner = require(script:WaitForChild("Spawner"))
 local WaveEvent = require(script:WaitForChild("WaveEvent"))
 
+-- Setup Remotes
 local remotesFolder = ReplicatedStorage:FindFirstChild("BazaarRemotes")
 if not remotesFolder then
 	remotesFolder = Instance.new("Folder")
@@ -28,20 +29,21 @@ local function getOrCreateRemote(name)
 	return remote
 end
 
-local waveWarning = getOrCreateRemote("WaveWarning")
-local feedback = getOrCreateRemote("Feedback")
-local rebirth = getOrCreateRemote("Rebirth")
+local waveRemote = getOrCreateRemote("WaveWarning")
+local feedbackRemote = getOrCreateRemote("Feedback")
+local rebirthRemote = getOrCreateRemote("Rebirth")
 
 local events = {
-	Wave = waveWarning,
-	Feedback = feedback,
-	Rebirth = rebirth,
+	Wave = waveRemote,
+	Feedback = feedbackRemote,
+	Rebirth = rebirthRemote,
 }
 
-local worldData = WorldBuilder.Build()
-BaseManager.Init(Economy, CharacterFactory, events.Feedback, worldData)
+-- Build World and Boot Subsystems
+local world = WorldBuilder.Build()
+BaseManager.Init(Economy, CharacterFactory, events.Feedback, world)
 Economy.StartIncomeTick()
-Spawner.Init(Data, Economy, CharacterFactory, events, BaseManager, worldData.shrinePrompt)
+Spawner.Init(Data, Economy, CharacterFactory, events, BaseManager, world.shrinePrompt)
 WaveEvent.Init(events, Economy, BaseManager)
 
 local function initializePlayer(player)
@@ -54,8 +56,9 @@ local function initializePlayer(player)
 	player.CharacterAdded:Connect(function(character)
 		local root = character:WaitForChild("HumanoidRootPart", 10)
 		if root and plot then
-			local pIdx = plot:GetAttribute("PlotIndex") or 1
-			local angle = (pIdx - 1) * (math.pi / 4)
+			-- Calculate world spawn location corresponding to the assigned plot index on the outer ring
+			local plotIndex = plot:GetAttribute("PlotIndex") or 1
+			local angle = (plotIndex - 1) * (math.pi / 4)
 			character:PivotTo(CFrame.new(math.cos(angle) * 82, 11, math.sin(angle) * 82))
 		end
 
@@ -72,7 +75,9 @@ local function initializePlayer(player)
 		end
 	end)
 
-	player:LoadCharacter()
+	pcall(function()
+		player:LoadCharacter()
+	end)
 end
 
 Players.PlayerAdded:Connect(initializePlayer)
@@ -82,6 +87,6 @@ Players.PlayerRemoving:Connect(function(player)
 	Economy.RemovePlayer(player)
 end)
 
-for _, player in Players:GetPlayers() do
+for _, player in ipairs(Players:GetPlayers()) do
 	task.spawn(initializePlayer, player)
 end

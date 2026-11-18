@@ -6,13 +6,21 @@ local player = Players.LocalPlayer
 local remotes = ReplicatedStorage:WaitForChild("BazaarRemotes")
 local feedbackEvent = remotes:WaitForChild("Feedback")
 
+local POPUP_DURATION = 0.8
+
 local function showIncomePopup(amount)
 	local playerGui = player:FindFirstChild("PlayerGui")
 	if not playerGui then
 		return
 	end
 
-	local container = playerGui:FindFirstChild("BazaarHUD") or playerGui
+	local effectsGui = playerGui:FindFirstChild("BazaarEffects")
+	if not effectsGui then
+		effectsGui = Instance.new("ScreenGui")
+		effectsGui.Name = "BazaarEffects"
+		effectsGui.ResetOnSpawn = false
+		effectsGui.Parent = playerGui
+	end
 
 	local popup = Instance.new("TextLabel")
 	popup.Name = "CashPopup"
@@ -22,11 +30,10 @@ local function showIncomePopup(amount)
 	popup.BackgroundTransparency = 1
 	popup.Text = "+$" .. tostring(amount) .. "/s"
 	popup.TextColor3 = Color3.fromRGB(255, 226, 105)
-	popup.TextStrokeColor3 = Color3.fromRGB(24, 29, 36)
 	popup.TextStrokeTransparency = 0.2
 	popup.TextSize = 28
 	popup.Font = Enum.Font.GothamBlack
-	popup.Parent = container
+	popup.Parent = effectsGui
 
 	local tweenInfo = TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 	local tween = TweenService:Create(popup, tweenInfo, {
@@ -38,7 +45,6 @@ local function showIncomePopup(amount)
 	tween.Completed:Connect(function()
 		popup:Destroy()
 	end)
-
 	tween:Play()
 end
 

@@ -1,3 +1,5 @@
-# Generated submission files and runtime logs
-out/
+# Brainrot Bazaar: build outputs and logs are generated, never committed
 *.log
+out/
+# Local editor backups
+*~
