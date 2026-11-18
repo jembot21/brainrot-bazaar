@@ -1,5 +1,9 @@
-# Brainrot Bazaar: build outputs and logs are generated, never committed
+# Local Roblox builds and hand-in output
+/game.rbxl
+/out/
+/node_modules/
+
+# Local logs and editor backups
 *.log
-out/
-# Local editor backups
+*.rbxl.lock
 *~

@@ -1,3 +1,4 @@
+// Brainrot Tsunami Escape competition hand-in.
 import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,13 +9,19 @@ const outputDirectory = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
 const playPath = join(projectDirectory, 'PLAY.json');
 const playData = JSON.parse(readFileSync(playPath, 'utf-8'));
-if (playData.place_id === 0) {
-	throw new Error('Refusing hand-in: PLAY.json still names place 0.');
+const placeId = playData?.place_id;
+if (!Number.isSafeInteger(placeId) || placeId <= 0) {
+	throw new Error('Refusing hand-in: PLAY.json must name a published Roblox place (place 0 is the starter placeholder).');
+}
+
+const placeFile = join(projectDirectory, 'game.rbxl');
+if (!existsSync(placeFile)) {
+	throw new Error('Build game.rbxl with Rojo before running the hand-in.');
 }
 
 mkdirSync(outputDirectory, { recursive: true });
 
-copyFileSync(join(projectDirectory, 'game.rbxl'), join(outputDirectory, 'game.rbxl'));
+copyFileSync(placeFile, join(outputDirectory, 'game.rbxl'));
 copyFileSync(playPath, join(outputDirectory, 'PLAY.json'));
 
 // Exclude dotfiles and hidden folders at all directory levels during packaging

@@ -1,182 +1,170 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
-local remotes = ReplicatedStorage:WaitForChild("BazaarRemotes")
-local feedbackEvent = remotes:WaitForChild("Feedback")
-local waveEvent = remotes:WaitForChild("WaveWarning")
+local data = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("BrainrotData"))
+local events = ReplicatedStorage:WaitForChild("TsunamiEvents")
+local world = workspace:WaitForChild("TsunamiIsland")
+local stats = player:WaitForChild("leaderstats")
+local cash = stats:WaitForChild("Cash")
+local income = stats:WaitForChild("$/s")
 
-local Shared = ReplicatedStorage:WaitForChild("Shared")
-local data = require(Shared:WaitForChild("BrainrotData"))
-
-local playerGui = player:WaitForChild("PlayerGui")
+local mint = Color3.fromRGB(125, 255, 205)
+local white = Color3.fromRGB(248, 251, 255)
+local navy = Color3.fromRGB(16, 33, 50)
+local muted = Color3.fromRGB(177, 199, 218)
 
 local gui = Instance.new("ScreenGui")
-gui.Name = "BazaarHUD"
+gui.Name = "TsunamiHUD"
 gui.ResetOnSpawn = false
-gui.IgnoreGuiInset = true
-gui.Parent = playerGui
+gui.Parent = player:WaitForChild("PlayerGui")
 
-local function label(parent, text, size, pos, textColor, textSize, font, align)
-	local lbl = Instance.new("TextLabel")
-	lbl.BackgroundTransparency = 1
-	lbl.Text = text or ""
-	lbl.Size = size or UDim2.fromScale(1, 1)
-	lbl.Position = pos or UDim2.new(0, 0, 0, 0)
-	lbl.TextColor3 = textColor or Color3.new(1, 1, 1)
-	lbl.TextSize = textSize or 18
-	lbl.Font = font or Enum.Font.GothamBold
-	lbl.TextXAlignment = align or Enum.TextXAlignment.Center
-
+local function panel(parent, size, position, anchor)
+	local frame = Instance.new("Frame")
+	frame.Size = size
+	frame.Position = position
+	frame.AnchorPoint = anchor or Vector2.zero
+	frame.BackgroundColor3 = navy
+	frame.BackgroundTransparency = 0.09
+	frame.Parent = parent
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 12)
+	corner.Parent = frame
 	local stroke = Instance.new("UIStroke")
-	stroke.Color = Color3.fromRGB(25, 33, 40)
-	stroke.Transparency = 0.25
-	stroke.Parent = lbl
-
-	lbl.Parent = parent
-	return lbl
+	stroke.Color = Color3.fromRGB(116, 175, 198)
+	stroke.Transparency = 0.65
+	stroke.Parent = frame
+	return frame
 end
 
--- Wallet frame
-local wallet = Instance.new("Frame")
-wallet.Name = "Wallet"
-wallet.AnchorPoint = Vector2.new(0.5, 0)
-wallet.Position = UDim2.new(0.5, 0, 0, 18)
-wallet.Size = UDim2.fromOffset(390, 84)
-wallet.BackgroundColor3 = Color3.fromRGB(30, 43, 51)
-wallet.BackgroundTransparency = 0.08
-wallet.BorderSizePixel = 0
+local function label(parent, size, position, textSize, color, font)
+	local text = Instance.new("TextLabel")
+	text.Size = size
+	text.Position = position
+	text.BackgroundTransparency = 1
+	text.TextColor3 = color
+	text.Font = font or Enum.Font.GothamBold
+	text.TextSize = textSize
+	text.Parent = parent
+	return text
+end
 
-local walletCorner = Instance.new("UICorner")
-walletCorner.CornerRadius = UDim.new(0, 8)
-walletCorner.Parent = wallet
-wallet.Parent = gui
+local header = panel(gui, UDim2.new(0.86, 0, 0, 122), UDim2.new(0.5, 0, 0, 9), Vector2.new(0.5, 0))
+local maxWidth = Instance.new("UISizeConstraint")
+maxWidth.MaxSize = Vector2.new(420, 122)
+maxWidth.Parent = header
+local cashText = label(header, UDim2.new(1, 0, 0, 44), UDim2.fromOffset(0, 3), 38, mint, Enum.Font.GothamBlack)
+local metrics = label(header, UDim2.new(1, 0, 0, 23), UDim2.fromOffset(0, 45), 14, white)
+local waveText = label(header, UDim2.new(1, 0, 0, 24), UDim2.fromOffset(0, 75), 16, white)
+local track = panel(header, UDim2.new(1, -24, 0, 6), UDim2.fromOffset(12, 105))
+track.BackgroundColor3 = Color3.fromRGB(49, 70, 91)
+local fill = Instance.new("Frame")
+fill.BorderSizePixel = 0
+fill.Parent = track
+local rounding = Instance.new("UICorner")
+rounding.CornerRadius = UDim.new(1, 0)
+rounding.Parent = fill
 
-local cashLabel = label(wallet, "$150", UDim2.new(1, 0, 0, 44), UDim2.new(0, 0, 0, 2), Color3.fromRGB(255, 223, 99), 34)
-local detailsLabel = label(wallet, "$0 / sec     x1.0 income", UDim2.new(1, 0, 0, 28), UDim2.new(0, 0, 0, 48), Color3.fromRGB(192, 235, 218), 18)
+local feedback = label(gui, UDim2.new(0.95, 0, 0, 52), UDim2.new(0.5, 0, 0.78, 0), 19, white)
+feedback.AnchorPoint = Vector2.new(0.5, 0)
+feedback.TextStrokeTransparency = 0.25
+feedback.TextWrapped = true
+feedback.Text = ""
+local feedbackVersion = 0
+events.Feedback.OnClientEvent:Connect(function(message)
+	feedbackVersion += 1
+	local version = feedbackVersion
+	feedback.Text = message
+	task.delay(3, function()
+		if feedbackVersion == version then feedback.Text = "" end
+	end)
+end)
 
--- WaveWarning banner
-local waveBanner = label(gui, "", UDim2.new(0.7, 0, 0, 55), UDim2.new(0.15, 0, 0, 112), Color3.fromRGB(255, 247, 219), 30)
-waveBanner.BackgroundColor3 = Color3.fromRGB(195, 57, 60)
-waveBanner.BackgroundTransparency = 0.12
-waveBanner.Visible = false
+local toggle = Instance.new("TextButton")
+toggle.Size = UDim2.fromOffset(144, 40)
+toggle.Position = UDim2.new(1, -12, 0, 142)
+toggle.AnchorPoint = Vector2.new(1, 0)
+toggle.BackgroundColor3 = navy
+toggle.TextColor3 = mint
+toggle.Font = Enum.Font.GothamBold
+toggle.TextSize = 15
+toggle.Parent = gui
+local toggleCorner = Instance.new("UICorner")
+toggleCorner.CornerRadius = UDim.new(0, 10)
+toggleCorner.Parent = toggle
 
--- Feedback banner
-local feedbackBanner = label(gui, "", UDim2.new(0.7, 0, 0, 44), UDim2.new(0.15, 0, 0.82, 0), Color3.new(1, 1, 1), 23)
-feedbackBanner.BackgroundColor3 = Color3.fromRGB(30, 43, 51)
-feedbackBanner.BackgroundTransparency = 0.1
-feedbackBanner.Visible = false
+local index = panel(gui, UDim2.new(0, 246, 1, -205), UDim2.new(1, -12, 0, 189), Vector2.new(1, 0))
+local indexSize = Instance.new("UISizeConstraint")
+indexSize.MaxSize = Vector2.new(246, 272)
+indexSize.Parent = index
+local scroll = Instance.new("ScrollingFrame")
+scroll.Size = UDim2.fromScale(1, 1)
+scroll.CanvasSize = UDim2.fromOffset(0, 24 + #data.Cast * 20)
+scroll.BackgroundTransparency = 1
+scroll.BorderSizePixel = 0
+scroll.ScrollBarThickness = 4
+scroll.ScrollBarImageColor3 = mint
+scroll.ScrollingDirection = Enum.ScrollingDirection.Y
+scroll.Parent = index
+index.Visible = false
+toggle.Activated:Connect(function() index.Visible = not index.Visible end)
+local entries = {}
+for number in ipairs(data.Cast) do
+	local entry = label(scroll, UDim2.new(1, -24, 0, 19), UDim2.fromOffset(12, 12 + (number - 1) * 20), 13, muted)
+	entry.TextXAlignment = Enum.TextXAlignment.Left
+	entries[number] = entry
+end
 
--- CollectionIndex frame
-local collectionIndex = Instance.new("Frame")
-collectionIndex.Name = "CollectionIndex"
-collectionIndex.AnchorPoint = Vector2.new(1, 0.5)
-collectionIndex.Position = UDim2.new(1, -20, 0.5, 0)
-collectionIndex.Size = UDim2.fromOffset(270, 390)
-collectionIndex.BackgroundColor3 = Color3.fromRGB(34, 48, 58)
-collectionIndex.BackgroundTransparency = 0.08
-collectionIndex.BorderSizePixel = 0
+local function updateCollection()
+	local owned = 0
+	for number, definition in ipairs(data.Cast) do
+		local unlocked = player:GetAttribute("Owned_" .. number)
+		owned += unlocked and 1 or 0
+		entries[number].Text = (unlocked and "✓  " or "○  ") .. definition.name
+		entries[number].TextColor3 = unlocked and data.Rarities[definition.rarity].color or muted
+	end
+	toggle.Text = ("Collection  %d / %d"):format(owned, #data.Cast)
+end
+for number in ipairs(data.Cast) do
+	player:GetAttributeChangedSignal("Owned_" .. number):Connect(updateCollection)
+end
+updateCollection()
 
-local indexCorner = Instance.new("UICorner")
-indexCorner.CornerRadius = UDim.new(0, 8)
-indexCorner.Parent = collectionIndex
-collectionIndex.Parent = gui
+local function money(amount)
+	if amount == math.floor(amount) then return string.format("%d", amount) end
+	return (string.format("%.2f", amount):gsub("0$", ""))
+end
 
-local titleLabel = label(
-	collectionIndex,
-	"BAZAAR INDEX  0/12",
-	UDim2.new(1, -16, 0, 38),
-	UDim2.new(0, 8, 0, 8),
-	Color3.fromRGB(255, 229, 150),
-	20
-)
-
-local entriesFrame = Instance.new("Frame")
-entriesFrame.BackgroundTransparency = 1
-entriesFrame.Position = UDim2.new(0, 10, 0, 52)
-entriesFrame.Size = UDim2.new(1, -20, 1, -62)
-entriesFrame.Parent = collectionIndex
-
-local listLayout = Instance.new("UIListLayout")
-listLayout.Padding = UDim.new(0, 2)
-listLayout.Parent = entriesFrame
-
-local castRows = {}
-local owned = {}
-
-for _, member in ipairs(data.Cast) do
-	local row = label(
-		entriesFrame,
-		"-  " .. member.name,
-		UDim2.new(1, 0, 0, 24),
-		UDim2.new(0, 0, 0, 0),
-		Color3.fromRGB(207, 215, 219),
-		15,
-		Enum.Font.GothamMedium,
-		Enum.TextXAlignment.Left
+local function updateMoney()
+	cashText.Text = "$" .. money(cash.Value)
+	metrics.Text = ("$%s/s   ·   %.1fx income   ·   Speed %d/%d"):format(
+		money(income.Value), player:GetAttribute("Multiplier") or 1,
+		player:GetAttribute("SpeedTier") or 0, data.SpeedShop.SpeedMaxTier
 	)
-	castRows[member.name] = row
 end
+cash.Changed:Connect(updateMoney)
+income.Changed:Connect(updateMoney)
+player:GetAttributeChangedSignal("Multiplier"):Connect(updateMoney)
+player:GetAttributeChangedSignal("SpeedTier"):Connect(updateMoney)
+updateMoney()
 
-local function update()
-	local cash = player:GetAttribute("Cash") or 150
-	local income = player:GetAttribute("Income") or 0
-	local mult = player:GetAttribute("Multiplier") or 1
-
-	cashLabel.Text = "$" .. cash
-	detailsLabel.Text = "$" .. income .. " / sec     x" .. string.format("%.1f", mult) .. " income"
-
-	local ownedCount = 0
-	for _, member in ipairs(data.Cast) do
-		local row = castRows[member.name]
-		if row then
-			if owned[member.name] then
-				ownedCount += 1
-				row.Text = "✓  " .. member.name
-				row.TextColor3 = Color3.fromRGB(112, 235, 164)
-			else
-				row.Text = "-  " .. member.name
-				row.TextColor3 = Color3.fromRGB(207, 215, 219)
-			end
-		end
+local phaseStyles = {
+	CALM = {title = "CALM", color = mint, duration = data.Wave.CalmSeconds},
+	WARNING = {title = "TSUNAMI INCOMING", color = Color3.fromRGB(255, 143, 105), duration = data.Wave.WarningSeconds},
+	WAVE = {title = "WAVE CROSSING", color = Color3.fromRGB(126, 213, 255), duration = data.Wave.WaveCrossSeconds},
+}
+local displayedStatus
+RunService.RenderStepped:Connect(function()
+	local style = phaseStyles[world:GetAttribute("WavePhase")] or phaseStyles.CALM
+	local endsAt = world:GetAttribute("WaveEndsAt") or workspace:GetServerTimeNow()
+	local remaining = math.max(0, endsAt - workspace:GetServerTimeNow())
+	local status = ("%s  ·  %ds  ·  %d studs"):format(style.title, math.ceil(remaining), world:GetAttribute("WaveHeight") or 0)
+	if status ~= displayedStatus then
+		displayedStatus = status
+		waveText.Text = status
+		waveText.TextColor3 = style.color
+		fill.BackgroundColor3 = style.color
 	end
-
-	titleLabel.Text = "BAZAAR INDEX  " .. ownedCount .. "/12"
-end
-
-player:GetAttributeChangedSignal("Cash"):Connect(update)
-player:GetAttributeChangedSignal("Income"):Connect(update)
-player:GetAttributeChangedSignal("Multiplier"):Connect(update)
-
-feedbackEvent.OnClientEvent:Connect(function(kind, text)
-	if kind == "owned" then
-		owned[text] = true
-		update()
-	elseif kind == "message" then
-		feedbackBanner.Text = text
-		feedbackBanner.Visible = true
-		task.delay(3.5, function()
-			if feedbackBanner.Text == text then
-				feedbackBanner.Visible = false
-			end
-		end)
-	end
+	fill.Size = UDim2.fromScale(math.clamp(remaining / style.duration, 0, 1), 1)
 end)
-
-waveEvent.OnClientEvent:Connect(function(text)
-	waveBanner.Text = text
-	waveBanner.Visible = (text ~= "")
-	if text ~= "" then
-		task.spawn(function()
-			for _ = 1, 3 do
-				waveBanner.BackgroundTransparency = 0.12
-				task.wait(0.15)
-				waveBanner.BackgroundTransparency = 0.35
-				task.wait(0.15)
-			end
-			waveBanner.BackgroundTransparency = 0.12
-		end)
-	end
-end)
-
-update()

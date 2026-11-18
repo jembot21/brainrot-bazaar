@@ -1,30 +1,48 @@
-# brainrot-bazaar
-
 [![make.fun · roblox-brainrot-01](https://make.fun/badge/roblox-brainrot-01.svg)](https://make.fun/bounty/roblox-brainrot-01?utm_source=github&utm_medium=readme&utm_campaign=roblox-brainrot-01)
-[![rank](https://make.fun/badge/roblox-brainrot-01/jembot21/brainrot-bazaar/rank.svg)](https://make.fun/bounty/roblox-brainrot-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=roblox-brainrot-01)
-[![reward](https://make.fun/badge/roblox-brainrot-01/jembot21/brainrot-bazaar/reward.svg)](https://make.fun/bounty/roblox-brainrot-01/reward?utm_source=github&utm_medium=readme&utm_campaign=roblox-brainrot-01)
+[![rank](https://make.fun/badge/roblox-brainrot-01/jembot21/brainrot-bazaar/rank.svg)](https://make.fun/bounty/roblox-brainrot-01?utm_source=github&utm_medium=readme&utm_campaign=roblox-brainrot-01)
+[![reward](https://make.fun/badge/roblox-brainrot-01/jembot21/brainrot-bazaar/reward.svg)](https://make.fun/bounty/roblox-brainrot-01?utm_source=github&utm_medium=readme&utm_campaign=roblox-brainrot-01)
 
-Brainrot Bazaar is an engaging 3D Roblox tycoon experience where players snatch parading meme mascots right off an elevated central conveyor, carry them safely back to their personalized shop plots, and auto-place them onto display pads to generate continuous passive cash per second. Collect diverse rarity tiers and shiny Gold, Diamond, and Rainbow mutations, defend against opportunistic thieves by locking your base, survive periodic cataclysmic tsunamis, and sacrifice wealth at the Rebirth Shrine for permanent multiplicative income boosts.
+# Brainrot Tsunami Escape
 
-## Run it
-
-```sh
-rojo build default.project.json --output game.rbxl && mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
-```
-
----
-<sub>Entered on [make.fun](https://make.fun/?ref=8vr38xr3&utm_source=github&utm_medium=readme&utm_campaign=roblox-brainrot-01) · AI agents build software for cash rewards</sub>
+[Play on Roblox](https://www.roblox.com/games/106961934406857)
 
 ## How to play
 
-- Buy mascots marching along the central conveyor belt using the interactive ProximityPrompt.
-- Walk back towards your base light pillar while carrying a mascot to auto-place it onto any unoccupied pad.
-- Placed mascots generate steady cash per second according to their tier and rolled mutation.
-- Each shop plot provides six display pads to build up your active revenue engine.
-- Mascots roll with distinct rarity tiers and can spawn as Gold (2x), Diamond (3x), or Rainbow (5x) mutations for massive cash earnings.
-- Interact with the shop sign prompt to toggle a 60-second security lock protecting your collection.
-- Unlocked mascot bases can be infiltrated by rivals who can steal displayed mascots right off the pads.
-- When the tsunami siren sounds, hurry back to your shop floor within ten seconds to avoid losing your carried mascot and 10% of your wallet.
-- Once you reach $25,000 in savings, activate the Rebirth Shrine to reset cash and collection in exchange for a permanent +0.5x income multiplier.
+1. Start with $150. Go to the beach conveyor and use the Catch prompt to buy one of the passing brainrots.
+2. Run back to your plot with the brainrot on your head and step on an empty display pad. Placed brainrots earn cash every second.
+3. Place three of the same species to fuse them into a brainrot from the next rarity tier. The result keeps the strongest mutation among the three. The result uses the same position in the next tier’s cast, or that tier’s first species if it has fewer entries. Three matching Mythics fuse into the same Mythic species.
+4. Buy speed tiers at the Speed Shop. Each tier adds 2 WalkSpeed, up to tier 10. Tier n costs the nearest whole dollar to $250 × n^1.6.
+5. Use a placed brainrot's prompt to steal from an unlocked rival plot or sell one of your own for 90% of its base price. Use your base sign to toggle a 60-second lock.
+6. At $25,000, use the Rebirth Shrine to reset your cash and brainrots. Each rebirth adds 0.5× to your income multiplier. Speed tiers carry through rebirth.
 
-[Play Brainrot Bazaar](https://www.roblox.com/games/106961934406857)
+## Wave cycle
+
+Each cycle has 40 seconds of calm, a 10-second warning, and a 9-second tsunami sweeping inland from the ocean. The wall grows from 6 to 10 to 14 to 18 studs across the first four cycles. Get inside your own plot or climb high ground above the wall. A washout sends you to your spawn, takes 5% of your cash, and sweeps away your carried brainrot. Brainrots on display pads are safe.
+
+Gold, Diamond, and Rainbow mutations multiply base income by 2×, 3×, and 5× respectively.
+
+## Controls
+
+- **WASD** to move, **Space** to jump, and mouse to look around.
+- **E** near an object to use its prompt. Use the on-screen prompts on touch devices.
+- Open **Collection** on the HUD to check off the 12 species you've placed this rebirth.
+
+## Build and run
+
+Build the Roblox place with Rojo and open it in Roblox Studio to playtest. Use Studio’s Server & Clients mode with two players to try stealing and locking. Cash, collections, speed tiers, and rebirths reset when you leave the server.
+
+```sh
+rojo build default.project.json --output game.rbxl
+```
+
+Publish the binary place through Roblox Open Cloud with a key authorized to publish versions for the universe in `PLAY.json`.
+
+```sh
+curl --fail-with-body -X POST \
+  -H "x-api-key: ${ROBLOX_API_KEY}" \
+  -H "Content-Type: application/octet-stream" \
+  --data-binary @game.rbxl \
+  'https://apis.roblox.com/universes/v1/10777357093/places/106961934406857/versions?versionType=Published'
+```
+
+After building, run `MAKEFUN_OUTPUT_DIR=out node main.ts` to package the competition hand-in.

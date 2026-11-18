@@ -1,3 +1,4 @@
+local Data = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("BrainrotData"))
 local CharacterFactory = {}
 
 local DARK_COLOR = Color3.fromRGB(30, 37, 49)
@@ -15,6 +16,8 @@ local function createPart(parent, name, size, cf, color, shape, material)
 	part.Material = material or Enum.Material.SmoothPlastic
 	part.Anchored = true
 	part.CanCollide = false
+	part.CanTouch = false
+	part.CanQuery = false
 	part.TopSurface = Enum.SurfaceType.Smooth
 	part.BottomSurface = Enum.SurfaceType.Smooth
 	part.Parent = parent
@@ -31,6 +34,8 @@ local function createCylinder(parent, name, diameter, height, cf, color, materia
 	part.Material = material or Enum.Material.SmoothPlastic
 	part.Anchored = true
 	part.CanCollide = false
+	part.CanTouch = false
+	part.CanQuery = false
 	part.TopSurface = Enum.SurfaceType.Smooth
 	part.BottomSurface = Enum.SurfaceType.Smooth
 	part.Parent = parent
@@ -419,6 +424,8 @@ function CharacterFactory.Build(definition, rarity, mutation, income, promptActi
 		accessoryPart = createPart(model, "Accessory", Vector3.new(1, 1, 1), CFrame.new(0, 4.2, 0), GOLD_COLOR)
 	end
 
+	-- Cylinder bodies are rotated to stand upright. Keep the model's forward axis at -Z.
+	bodyPart.PivotOffset = bodyPart.CFrame:ToObjectSpace(CFrame.new(0, 2, 0))
 	model.PrimaryPart = bodyPart
 	model.WorldPivot = CFrame.new(0, 2, 0)
 
@@ -454,6 +461,12 @@ function CharacterFactory.Build(definition, rarity, mutation, income, promptActi
 	prompt.Parent = accessoryPart
 
 	return model, prompt
+end
+
+function CharacterFactory.Create(definition, mutation)
+	local income = Data.Income(definition, mutation)
+	local model, prompt = CharacterFactory.Build(definition, Data.Rarities[definition.rarity], mutation, income)
+	return {definition = definition, mutation = mutation, model = model, prompt = prompt}
 end
 
 return CharacterFactory

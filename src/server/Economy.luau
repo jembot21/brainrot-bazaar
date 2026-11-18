@@ -1,101 +1,89 @@
-local Economy = {}
-Economy.States = {}
+local Economy = {Players = {}}
 
-function Economy.InitPlayer(player)
-	local account = {
-		cash = 150,
-		placed = {},
-		rebirths = 0,
-		multiplier = 1,
-		carried = nil,
-		plot = nil,
-		income = 0,
-	}
-	Economy.States[player] = account
+function Economy.Init(data, events)
+	Economy.Data = data
+	Economy.Events = events
+end
 
-	local leaderstats = Instance.new("Folder")
-	leaderstats.Name = "leaderstats"
-
-	local cashVal = Instance.new("IntValue")
-	cashVal.Name = "Cash"
-	cashVal.Value = math.floor(account.cash)
-	cashVal.Parent = leaderstats
-
-	local incomeVal = Instance.new("IntValue")
-	incomeVal.Name = "$/s"
-	incomeVal.Value = math.floor(account.income)
-	incomeVal.Parent = leaderstats
-
-	local rebirthsVal = Instance.new("IntValue")
-	rebirthsVal.Name = "Rebirths"
-	rebirthsVal.Value = account.rebirths
-	rebirthsVal.Parent = leaderstats
-
-	leaderstats.Parent = player
-
+function Economy.AddPlayer(player)
+	Economy.Players[player] = {cash = Economy.Data.StartCash, placed = {}, rebirths = 0, multiplier = 1, speedTier = 0}
+	local stats = Instance.new("Folder")
+	stats.Name = "leaderstats"
+	for _, key in ipairs({"Cash", "$/s", "Rebirths"}) do
+		local value = Instance.new("NumberValue")
+		value.Name = key
+		value.Parent = stats
+	end
+	stats.Parent = player
 	Economy.Sync(player)
-	return account
 end
 
 function Economy.Sync(player)
-	local account = Economy.States[player]
-	if not account then
-		return
+	local state = Economy.Players[player]
+	local rate = 0
+	for _, item in pairs(state.placed) do
+		rate += Economy.Data.Income(item.definition, item.mutation)
 	end
-
-	local leaderstats = player:FindFirstChild("leaderstats")
-	if leaderstats then
-		local cashVal = leaderstats:FindFirstChild("Cash")
-		if cashVal then
-			cashVal.Value = math.floor(account.cash)
-		end
-
-		local incomeVal = leaderstats:FindFirstChild("$/s")
-		if incomeVal then
-			incomeVal.Value = math.floor(account.income)
-		end
-
-		local rebirthsVal = leaderstats:FindFirstChild("Rebirths")
-		if rebirthsVal then
-			rebirthsVal.Value = account.rebirths
-		end
-	end
-
-	player:SetAttribute("Cash", math.floor(account.cash))
-	player:SetAttribute("Income", math.floor(account.income))
-	player:SetAttribute("Multiplier", account.multiplier)
-	player:SetAttribute("Rebirths", account.rebirths)
+	state.rate = rate * state.multiplier
+	local stats = player.leaderstats
+	stats.Cash.Value = state.cash
+	stats["$/s"].Value = state.rate
+	stats.Rebirths.Value = state.rebirths
+	player:SetAttribute("Multiplier", state.multiplier)
+	player:SetAttribute("SpeedTier", state.speedTier)
 end
 
-function Economy.AddCash(player, amount)
-	local account = Economy.States[player]
-	if not account then
-		return false
+function Economy.ApplySpeed(player)
+	local state = Economy.Players[player]
+	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	if state and humanoid then
+		local shop = Economy.Data.SpeedShop
+		humanoid.WalkSpeed = shop.BaseWalkSpeed + shop.SpeedPerTier * state.speedTier
 	end
-	account.cash += amount
+end
+
+function Economy.Spend(player, cost)
+	local state = Economy.Players[player]
+	if not state or state.cash < cost then return false end
+	state.cash -= cost
 	Economy.Sync(player)
 	return true
 end
 
-function Economy.StartIncomeTick()
+function Economy.BuySpeed(player)
+	local state = Economy.Players[player]
+	if not state then return end
+	local shop = Economy.Data.SpeedShop
+	local tier = state.speedTier + 1
+	local feedback = Economy.Events.Feedback
+	if tier > shop.SpeedMaxTier then
+		feedback:FireClient(player, "Speed is maxed out!")
+		return
+	end
+	local cost = shop.Cost(tier)
+	if state.cash < cost then
+		feedback:FireClient(player, ("Speed tier %d costs $%d"):format(tier, cost))
+		return
+	end
+	state.cash -= cost
+	state.speedTier = tier
+	Economy.ApplySpeed(player)
+	Economy.Sync(player)
+	feedback:FireClient(player, ("Speed tier %d · WalkSpeed %d"):format(tier, shop.BaseWalkSpeed + shop.SpeedPerTier * tier))
+end
+
+function Economy.Start()
 	task.spawn(function()
-		while true do
-			task.wait(1)
-			for player, account in pairs(Economy.States) do
-				local totalIncome = 0
-				for _, placed in ipairs(account.placed) do
-					totalIncome += (placed.income or 0)
+		while task.wait(1) do
+			for player, state in pairs(Economy.Players) do
+				if state.rate > 0 then
+					state.cash += state.rate
+					Economy.Sync(player)
+					Economy.Events.Income:FireClient(player, state.rate)
 				end
-				account.income = totalIncome * account.multiplier
-				account.cash += account.income
-				Economy.Sync(player)
 			end
 		end
 	end)
-end
-
-function Economy.RemovePlayer(player)
-	Economy.States[player] = nil
 end
 
 return Economy
