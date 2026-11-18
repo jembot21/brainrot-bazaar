@@ -68,4 +68,21 @@ function Data.Income(definition, mutation)
 	return definition.incomePerSecond * (mutation and mutation.multiplier or 1)
 end
 
+-- Shared palette and repeatable dimensions for static island scenery.
+Data.Decor = {
+	Trunk = Color3.fromRGB(144, 92, 55),
+	Fronds = {Color3.fromRGB(47, 158, 85), Color3.fromRGB(78, 183, 99)},
+	Coconut = Color3.fromRGB(85, 52, 38),
+	Rock = Color3.fromRGB(115, 128, 139),
+	Bush = Color3.fromRGB(48, 137, 86),
+	Flowers = {Color3.fromRGB(255, 124, 181), Color3.fromRGB(255, 222, 105), Color3.fromRGB(255, 250, 238)},
+	Towels = {Color3.fromRGB(243, 111, 120), Color3.fromRGB(78, 198, 213), Color3.fromRGB(157, 130, 235)},
+	TorchFlame = Color3.fromRGB(255, 140, 44),
+	FrondSize = Vector3.new(5.6, 0.35, 2),
+	CoconutSize = Vector3.new(0.68, 0.68, 0.68),
+	FlowerSize = Vector3.new(0.52, 0.34, 0.52),
+	TowelSize = Vector3.new(4, 0.15, 7),
+	PlanterSize = Vector3.new(5, 1.2, 5),
+}
+
 return Data

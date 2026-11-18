@@ -18,6 +18,7 @@ function Economy.AddPlayer(player)
 	Economy.Sync(player)
 end
 
+-- Recompute income from the current display pads before publishing the stats.
 function Economy.Sync(player)
 	local state = Economy.Players[player]
 	local rate = 0
@@ -72,6 +73,7 @@ function Economy.BuySpeed(player)
 	feedback:FireClient(player, ("Speed tier %d · WalkSpeed %d"):format(tier, shop.BaseWalkSpeed + shop.SpeedPerTier * tier))
 end
 
+-- Each payout uses the per-second rate cached by Sync.
 function Economy.Start()
 	task.spawn(function()
 		while task.wait(1) do

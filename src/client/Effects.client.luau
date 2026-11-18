@@ -95,3 +95,45 @@ end)
 events.Income.OnClientEvent:Connect(function(amount)
 	banner(("+$%g"):format(amount), Color3.fromRGB(113, 255, 182), 0.225, 0.38, 24)
 end)
+
+-- Ambient particles live on this client and use their own render connection.
+pcall(function()
+	local RunService = game:GetService("RunService")
+	local motes = {}
+	local origins = {
+		Vector3.new(-82, 4, 39), Vector3.new(-79, 7, 51), Vector3.new(-80, 4, -61),
+		Vector3.new(-24, 5, -53), Vector3.new(12, 3, -69), Vector3.new(25, 3, 70),
+		Vector3.new(40, 5, -31), Vector3.new(48, 6, 30),
+	}
+	local folder = Instance.new("Folder")
+	folder.Name = "IslandMotes"
+	for index, origin in ipairs(origins) do
+		local mote = Instance.new("Part")
+		mote.Name = "Sparkle"
+		mote.Shape = Enum.PartType.Ball
+		mote.Size = Vector3.new(0.18, 0.18, 0.18)
+		mote.Material = Enum.Material.Neon
+		mote.Color = Color3.fromRGB(255, 235, 178)
+		mote.Transparency = 0.5
+		mote.Anchored = true
+		mote.CanCollide = false
+		mote.CanTouch = false
+		mote.CanQuery = false
+		mote.CastShadow = false
+		mote.Position = origin
+		mote.Parent = folder
+		motes[index] = mote
+	end
+	folder.Parent = world
+
+	-- Stable origins keep the motes near their scenery as they drift.
+	local elapsed = 0
+	RunService.RenderStepped:Connect(function(dt)
+		elapsed += dt
+		for index, mote in ipairs(motes) do
+			local phase = elapsed * 0.48 + index * 1.7
+			mote.Position = origins[index] + Vector3.new(math.cos(phase) * 1.6, math.sin(phase) * 0.7, math.sin(phase) * 1.1)
+			mote.Transparency = 0.55 + math.sin(phase + index) * 0.2
+		end
+	end)
+end)

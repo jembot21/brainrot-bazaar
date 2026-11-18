@@ -71,6 +71,195 @@ local function spawnLocation(parent, name, x, surfaceY, z)
 	return spawn
 end
 
+-- Scenery stays out of pad touches, travel, and the wave's ground raycast.
+local function ornament(piece)
+	piece.CanCollide = false
+	piece.CanTouch = false
+	piece.CanQuery = false
+	return piece
+end
+
+local function decorPart(parent, name, size, frame, color, material)
+	return ornament(part(parent, name, size, frame, color, material))
+end
+
+local function ball(parent, name, size, frame, color, material)
+	local piece = decorPart(parent, name, size, frame, color, material)
+	piece.Shape = Enum.PartType.Ball
+	return piece
+end
+
+local function cylinder(parent, name, diameter, height, frame, color, material)
+	local piece = decorPart(parent, name, Vector3.new(height, diameter, diameter),
+		frame * CFrame.Angles(0, 0, math.pi / 2), color, material)
+	piece.Shape = Enum.PartType.Cylinder
+	return piece
+end
+
+local function palm(parent, palette, ground)
+	for segment = 1, 3 do
+		local center = ground + Vector3.new((segment - 0.5) * 0.36, (segment - 0.5) * 2.55, 0)
+		cylinder(parent, "PalmTrunk", 1.45 - segment * 0.16, 2.75,
+			CFrame.new(center) * CFrame.Angles(0, 0, -0.14), palette.Trunk, Enum.Material.Wood)
+	end
+
+	local crown = CFrame.new(ground + Vector3.new(1.08, 7.7, 0))
+	for index = 1, 6 do
+		local frame = crown * CFrame.Angles(0, index * math.pi / 3, 0)
+		local droop = CFrame.Angles(0, 0, -0.30 - (index % 2) * 0.15)
+		ball(parent, "PalmFrond", palette.FrondSize, frame * droop * CFrame.new(2.35, 0, 0),
+			palette.Fronds[(index - 1) % #palette.Fronds + 1])
+	end
+	for _, side in ipairs({-1, 1}) do
+		ball(parent, "Coconut", palette.CoconutSize, crown * CFrame.new(0.3, -0.52, side * 0.52), palette.Coconut)
+	end
+end
+
+local function planter(parent, palette, ground)
+	decorPart(parent, "PalmPlanter", palette.PlanterSize, CFrame.new(ground + Vector3.new(0, palette.PlanterSize.Y / 2, 0)),
+		palette.Coconut, Enum.Material.WoodPlanks)
+	palm(parent, palette, ground + Vector3.new(0, palette.PlanterSize.Y, 0))
+end
+
+local function lifeguardTower(parent, palette)
+	local center = CFrame.new(-84, 0, 38)
+	for _, x in ipairs({-1, 1}) do
+		for _, z in ipairs({-1, 1}) do
+			local foot = Vector3.new(x * 3.2, 0.5, z * 3.2)
+			local top = Vector3.new(x * 2.5, 5.85, z * 2.5)
+			local leg = CFrame.lookAt((foot + top) / 2, top)
+			decorPart(parent, "LifeguardLeg", Vector3.new(0.55, 0.55, (top - foot).Magnitude),
+				center * leg, palette.Trunk, Enum.Material.Wood)
+			decorPart(parent, "LifeguardPost", Vector3.new(0.35, 3, 0.35),
+				center * CFrame.new(x * 2.5, 8, z * 2.5), palette.Trunk, Enum.Material.Wood)
+		end
+	end
+	decorPart(parent, "LifeguardPlatform", Vector3.new(7, 1, 7), center * CFrame.new(0, 6, 0),
+		palette.Trunk, Enum.Material.WoodPlanks)
+	for index = 0, 3 do
+		local roofSide = center * CFrame.new(0, 10, 0) * CFrame.Angles(0, index * math.pi / 2, 0)
+		decorPart(parent, "LifeguardRoof", Vector3.new(7.3, 0.3, 2.8),
+			roofSide * CFrame.new(0, 0.2, 2.25) * CFrame.Angles(0.38, 0, 0), orange)
+	end
+	decorPart(parent, "LifeguardRoofCap", Vector3.new(2.1, 0.38, 2.1),
+		center * CFrame.new(0, 10.8, 0) * CFrame.Angles(0, math.pi / 4, 0), orange)
+	for _, z in ipairs({-0.95, 0.95}) do
+		decorPart(parent, "LadderRail", Vector3.new(0.26, 5.5, 0.26),
+			center * CFrame.new(3.8, 3.2, z) * CFrame.Angles(0, 0, 0.1), palette.Coconut, Enum.Material.Wood)
+	end
+	for rung = 1, 4 do
+		decorPart(parent, "LadderRung", Vector3.new(0.35, 0.2, 2.1),
+			center * CFrame.new(4.05 - rung * 0.1, 0.7 + rung * 1.12, 0), palette.Trunk, Enum.Material.Wood)
+	end
+	local board = ornament(sign(parent, "LifeguardSign", Vector3.new(-80.35, 8.1, 38), "LIFEGUARD", orange, 6.5))
+	board.Size = Vector3.new(0.3, 1.25, 6.5)
+end
+
+local function buildDecorations(world, palette)
+	local folder = Instance.new("Folder")
+	folder.Name = "Decorations"
+	folder.Parent = world
+
+	for _, ground in ipairs({
+		Vector3.new(-84, 0.5, -70), Vector3.new(-84, 0.5, -18),
+		Vector3.new(-84, 0.5, 58), Vector3.new(-84, 0.5, 76),
+		Vector3.new(-22, 0.5, -52), Vector3.new(-22, 0.5, 64),
+		Vector3.new(0, 0, -84), Vector3.new(0, 0, 84),
+		Vector3.new(30, 0, 88), Vector3.new(44, 0, -32),
+	}) do
+		palm(folder, palette, ground)
+	end
+	for _, z in ipairs({-86, 86}) do
+		planter(folder, palette, Vector3.new(68, 4, z))
+	end
+
+	for _, center in ipairs({
+		Vector3.new(-70, 0.5, 62), Vector3.new(-38, 0.5, -64),
+		Vector3.new(-5, 0, -88), Vector3.new(35, 0, -90), Vector3.new(9, 0, -56),
+	}) do
+		local stoneCount = center.X == 9 and 3 or 2
+		for index = 1, stoneCount do
+			local size = Vector3.new(3.5 - 0.55 * index, 2 - 0.3 * index, 2.6 - 0.35 * index)
+			local frame = CFrame.new(center + Vector3.new((index - 2) * 1.65, size.Y * 0.25, index % 2))
+			ball(folder, "BeachStone", size, frame * CFrame.Angles(0, index * 0.8, 0), palette.Rock, Enum.Material.Slate)
+		end
+	end
+	for _, z in ipairs({-45, 45, -85, 85}) do
+		ball(folder, "FloweringBush", Vector3.new(4, 2.2, 3.6), CFrame.new(58, 0.8, z), palette.Bush, Enum.Material.Grass)
+		for index, color in ipairs(palette.Flowers) do
+			local side = index - 2
+			ball(folder, "BushFlower", palette.FlowerSize, CFrame.new(58 + side, 1.9 - math.abs(side) * 0.12, z + side * 0.3), color)
+		end
+	end
+	for _, center in ipairs({Vector3.new(10, 0.17, -70), Vector3.new(25, 0.17, 70), Vector3.new(40, 0.17, -55)}) do
+		for index = 1, 6 do
+			local angle = index * math.pi / 3
+			local offset = Vector3.new(math.cos(angle) * 1.45, 0, math.sin(angle) * 1.45)
+			ball(folder, "GrassFlower", palette.FlowerSize, CFrame.new(center + offset), palette.Flowers[(index - 1) % #palette.Flowers + 1])
+		end
+	end
+
+	for _, center in ipairs({
+		Vector3.new(-60, 0.55, -40), Vector3.new(-40, 0.55, 45),
+		Vector3.new(-75, 0.55, 30), Vector3.new(-30, 0.55, -70),
+	}) do
+		local frame = CFrame.new(center)
+		ball(folder, "Starfish", Vector3.new(1.32, 0.19, 1.15), frame, orange)
+		ball(folder, "PinkShell", Vector3.new(0.62, 0.32, 0.48), frame * CFrame.new(1.35, 0, 0.65), palette.Flowers[1])
+		ball(folder, "IvoryShell", Vector3.new(0.45, 0.25, 0.58), frame * CFrame.new(-1.05, 0, 0.88), palette.Flowers[3])
+	end
+	for index, center in ipairs({Vector3.new(-70, 0.58, 52), Vector3.new(-38, 0.58, -52), Vector3.new(-72, 0.58, -30)}) do
+		local frame = CFrame.new(center) * CFrame.Angles(0, (index - 2) * 0.26, 0)
+		decorPart(folder, "BeachTowel", palette.TowelSize, frame, palette.Towels[index], Enum.Material.Fabric)
+		for _, z in ipairs({-2.75, 2.75}) do
+			decorPart(folder, "TowelStripe", Vector3.new(palette.TowelSize.X, 0.02, 0.48),
+				frame * CFrame.new(0, 0.08, z), palette.Flowers[3], Enum.Material.Fabric)
+		end
+		if index <= 2 then
+			decorPart(folder, "BeachCrate", Vector3.new(1.7, 1.6, 1.7), frame * CFrame.new(-3.1, 0.72, 1.4),
+				palette.Trunk, Enum.Material.WoodPlanks)
+			local barrel = frame * CFrame.new(-3.1, 0.92, -1.2)
+			cylinder(folder, "BeachBarrel", 1.65, 2, barrel, palette.Trunk, Enum.Material.WoodPlanks)
+		end
+	end
+	lifeguardTower(folder, palette)
+
+	for _, x in ipairs({30, 46}) do
+		for _, z in ipairs({-18, 18}) do
+			local frame = CFrame.new(x, 0, z)
+			cylinder(folder, "TikiPole", 0.44, 4, frame * CFrame.new(0, 2, 0), palette.Coconut, Enum.Material.Wood)
+			cylinder(folder, "TikiCup", 0.9, 0.45, frame * CFrame.new(0, 3.9, 0), palette.Trunk)
+			local flame = ball(folder, "TikiFlame", Vector3.new(0.68, 0.93, 0.68),
+				frame * CFrame.new(0, 4.42, 0), palette.TorchFlame, Enum.Material.Neon)
+			local light = Instance.new("PointLight")
+			light.Color = palette.TorchFlame
+			light.Range = 9
+			light.Brightness = 0.8
+			light.Parent = flame
+		end
+	end
+
+	for _, center in ipairs({
+		Vector3.new(-82, 59, -77), Vector3.new(-78, 65, 77),
+		Vector3.new(92, 68, -83), Vector3.new(95, 55, 84),
+	}) do
+		for index = 1, 3 do
+			local size = Vector3.new(19 + index * 1.8, 4.4 + index * 0.55, 10 + index)
+			local puff = ball(folder, "CloudPuff", size, CFrame.new(center + Vector3.new((index - 2) * 9, index % 2, index * 1.8)),
+				Color3.fromRGB(253, 254, 255))
+			puff.CastShadow = false
+		end
+	end
+	for _, z in ipairs({-50, 0, 50}) do
+		local frame = CFrame.new(-115, -0.5, z)
+		cylinder(folder, "OceanBuoy", 2.6, 3, frame, Color3.fromRGB(235, 63, 67))
+		cylinder(folder, "BuoyStripe", 2.66, 0.52, frame * CFrame.new(0, 0.3, 0), palette.Flowers[3])
+	end
+	for _, z in ipairs({-14, 14}) do
+		ornament(sign(folder, "BeachWarning", Vector3.new(-14, 3, z), "WATCH FOR WAVES", orange, 8))
+	end
+end
+
 function WorldBuilder.Build()
 	local data = WorldBuilder.Data
 	workspace.Baseplate.CanCollide = false
@@ -169,6 +358,8 @@ function WorldBuilder.Build()
 		part(world, "BeachUmbrellaPole", Vector3.new(0.4, 6, 0.4), CFrame.new(-66, 3, z), navy)
 		part(world, "BeachUmbrella", Vector3.new(7, 0.65, 7), CFrame.new(-66, 6, z) * CFrame.Angles(0, math.pi / 4, 0), orange)
 	end
+
+	buildDecorations(world, data.Decor)
 
 	return {
 		folder = world, plots = plots, lobbySpawn = spawnLocation(world, "LobbySpawn", 50, 0, 0),

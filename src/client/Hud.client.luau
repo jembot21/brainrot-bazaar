@@ -116,6 +116,7 @@ for number in ipairs(data.Cast) do
 	entries[number] = entry
 end
 
+-- Refresh the checklist from the ownership attributes replicated by the server.
 local function updateCollection()
 	local owned = 0
 	for number, definition in ipairs(data.Cast) do
@@ -154,6 +155,7 @@ local phaseStyles = {
 	WARNING = {title = "TSUNAMI INCOMING", color = Color3.fromRGB(255, 143, 105), duration = data.Wave.WarningSeconds},
 	WAVE = {title = "WAVE CROSSING", color = Color3.fromRGB(126, 213, 255), duration = data.Wave.WaveCrossSeconds},
 }
+-- Cache the status text while the progress fill updates each frame.
 local displayedStatus
 RunService.RenderStepped:Connect(function()
 	local style = phaseStyles[world:GetAttribute("WavePhase")] or phaseStyles.CALM

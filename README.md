@@ -6,6 +6,8 @@
 
 [Play on Roblox](https://www.roblox.com/games/106961934406857)
 
+Race from a palm-lined beach past the orange-roofed lifeguard tower to the island's bases. Flower patches dot the grass, tiki torches frame the central path, and red-and-white buoys mark the water beneath drifting-looking banks of white clouds.
+
 ## How to play
 
 1. Start with $150. Go to the beach conveyor and use the Catch prompt to buy one of the passing brainrots.

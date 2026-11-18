@@ -53,6 +53,7 @@ function Bases.Init(data, economy, factory, events, world)
 			events.Feedback:FireClient(player, expires == 0 and "Base unlocked" or ("Base locked for %d seconds"):format(data.BaseLockSeconds))
 			if expires > 0 then
 				task.delay(data.BaseLockSeconds, function()
+					-- An older timer must leave a newer lock in place.
 					if plot.lockUntil == expires then
 						plot.lockUntil = 0
 						updateSign(plot)
@@ -143,6 +144,7 @@ function Bases.Fuse(player, definition)
 	local pads = Bases.Assigned[player].pads
 	local count = Bases.Data.Fusion.FuseCount
 	while true do
+		-- Pad order determines which slot receives the fused model.
 		local matches = {}
 		local bestMutation
 		for _, pad in ipairs(pads) do

@@ -48,11 +48,11 @@ local function addFace(parent, centerPos, eyeSpacing, eyeY, eyeZ)
 	local spacing = eyeSpacing or 0.6
 
 	-- Left Eye & Pupil
-	createPart(parent, "EyeL", Vector3.new(0.55, 0.6, 0.25), CFrame.new(centerPos + Vector3.new(-spacing, y, z)), WHITE_COLOR, Enum.PartType.Ball)
+	createPart(parent, "EyeL", EYE_SIZE, CFrame.new(centerPos + Vector3.new(-spacing, y, z)), WHITE_COLOR, Enum.PartType.Ball)
 	createPart(parent, "PupilL", Vector3.new(0.22, 0.3, 0.12), CFrame.new(centerPos + Vector3.new(-spacing, y, z - 0.12)), DARK_COLOR, Enum.PartType.Ball)
 
 	-- Right Eye & Pupil
-	createPart(parent, "EyeR", Vector3.new(0.55, 0.6, 0.25), CFrame.new(centerPos + Vector3.new(spacing, y, z)), WHITE_COLOR, Enum.PartType.Ball)
+	createPart(parent, "EyeR", EYE_SIZE, CFrame.new(centerPos + Vector3.new(spacing, y, z)), WHITE_COLOR, Enum.PartType.Ball)
 	createPart(parent, "PupilR", Vector3.new(0.22, 0.3, 0.12), CFrame.new(centerPos + Vector3.new(spacing, y, z - 0.12)), DARK_COLOR, Enum.PartType.Ball)
 
 	-- Mouth
@@ -90,6 +90,7 @@ local function addCrown(parent, name, centerPos, diameter)
 	return crownCyl
 end
 
+-- Each cast builder returns the Body and creates the Accessory used by Build.
 local Builders = {}
 
 Builders["Sir Bounce Banana"] = function(parent, bodyColor)
@@ -367,8 +368,8 @@ local function buildGeneric(parent, definition, rarity, bodyColor)
 	local body = createPart(parent, "Body", Vector3.new(4, 4, 3), CFrame.new(0, 2, 0), bodyColor, rarity.shape)
 
 	-- Eyes & Pupils on generic body
-	createPart(parent, "EyeL", Vector3.new(0.55, 0.6, 0.25), CFrame.new(-0.8, 2.2, -1.52), WHITE_COLOR, Enum.PartType.Ball)
-	createPart(parent, "EyeR", Vector3.new(0.55, 0.6, 0.25), CFrame.new(0.8, 2.2, -1.52), WHITE_COLOR, Enum.PartType.Ball)
+	createPart(parent, "EyeL", EYE_SIZE, CFrame.new(-0.8, 2.2, -1.52), WHITE_COLOR, Enum.PartType.Ball)
+	createPart(parent, "EyeR", EYE_SIZE, CFrame.new(0.8, 2.2, -1.52), WHITE_COLOR, Enum.PartType.Ball)
 	createPart(parent, "PupilL", Vector3.new(0.22, 0.3, 0.12), CFrame.new(-0.8, 2.2, -1.68), DARK_COLOR, Enum.PartType.Ball)
 	createPart(parent, "PupilR", Vector3.new(0.22, 0.3, 0.12), CFrame.new(0.8, 2.2, -1.68), DARK_COLOR, Enum.PartType.Ball)
 	createPart(parent, "Mouth", Vector3.new(0.9, 0.18, 0.1), CFrame.new(0, 1.6, -1.52), DARK_COLOR)

@@ -7,6 +7,7 @@ local function setPhase(world, events, phase, duration, height, cycle)
 	world.folder:SetAttribute("WaveEndsAt", workspace:GetServerTimeNow() + duration)
 	world.folder:SetAttribute("WaveHeight", height)
 	world.folder:SetAttribute("WaveNumber", cycle)
+	-- Publish the phase after its timing and height are available to clients.
 	world.folder:SetAttribute("WavePhase", phase)
 	if phase == "WARNING" then
 		events.Warning:FireAllClients("TSUNAMI INCOMING", duration, height)
@@ -15,6 +16,7 @@ local function setPhase(world, events, phase, duration, height, cycle)
 	end
 end
 
+-- Refuge requires standing on a solid surface above the crest.
 local function isAboveWave(character, humanoid, root, height)
 	if root.Position.Y <= height then return false end
 	if humanoid.FloorMaterial == Enum.Material.Air then return false end

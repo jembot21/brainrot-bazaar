@@ -8,6 +8,7 @@ local beltSpeed = 3.1
 local spawnInterval = 2.5
 local random = Random.new()
 
+-- Choose a rarity by weight, then choose uniformly among its species.
 local function rollSpecies(data)
 	local roll = random:NextNumber(0, 100)
 	for _, rarity in ipairs(data.RarityOrder) do
@@ -55,6 +56,7 @@ function Spawner.Start(data, world, economy, factory, events)
 			elseif state.carry then
 				events.Feedback:FireClient(player, "Place the brainrot you're carrying first")
 			elseif economy.Spend(player, definition.price) then
+				-- Remove the caught model from belt updates before handing it to the player.
 				marching[item] = nil
 				item.connection:Disconnect()
 				item.connection = nil

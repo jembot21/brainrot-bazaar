@@ -8,6 +8,7 @@ local Bases = require(script:WaitForChild("BaseManager"))
 local Spawner = require(script:WaitForChild("Spawner"))
 local WaveEvent = require(script:WaitForChild("WaveEvent"))
 
+-- Parent the folder after all event names are available to clients.
 local remotes = Instance.new("Folder")
 remotes.Name = "TsunamiEvents"
 local events = {}
@@ -57,6 +58,7 @@ local function onPlayer(player)
 	if player.Parent ~= Players or Economy.Players[player] then return end
 	Economy.AddPlayer(player)
 	Bases.Assign(player)
+	-- Players without a plot start at the lobby spawn.
 	player.RespawnLocation = Bases.SpawnLocation(player)
 	player.CharacterAdded:Connect(function(character)
 		local humanoid = character:WaitForChild("Humanoid")

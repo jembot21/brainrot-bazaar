@@ -25,11 +25,11 @@ copyFileSync(placeFile, join(outputDirectory, 'game.rbxl'));
 copyFileSync(playPath, join(outputDirectory, 'PLAY.json'));
 
 // Exclude dotfiles and hidden folders at all directory levels during packaging
-const filter = (source: string) => !basename(source).startsWith('.');
+const visibleEntry = (source: string) => !basename(source).startsWith('.');
 
 cpSync(join(projectDirectory, 'src'), join(outputDirectory, 'src'), {
 	recursive: true,
-	filter,
+	filter: visibleEntry,
 });
 
 const outputScreenshots = join(outputDirectory, 'screenshots');
@@ -39,7 +39,7 @@ const srcScreenshots = join(projectDirectory, 'screenshots');
 if (existsSync(srcScreenshots)) {
 	cpSync(srcScreenshots, outputScreenshots, {
 		recursive: true,
-		filter,
+		filter: visibleEntry,
 	});
 }
 
