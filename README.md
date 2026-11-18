@@ -6,7 +6,7 @@
 
 [Play on Roblox](https://www.roblox.com/games/106961934406857)
 
-Race from a palm-lined beach past the orange-roofed lifeguard tower to the island's bases. Flower patches dot the grass, tiki torches frame the central path, and red-and-white buoys mark the water beneath drifting-looking banks of white clouds.
+Race from a beach lined with broad, two-tier palm crowns past the orange-roofed lifeguard tower to the island's bases. Flower patches dot the grass, tiki torches frame the central path, and red-and-white buoys mark the water beneath drifting-looking banks of white clouds.
 
 ## How to play
 

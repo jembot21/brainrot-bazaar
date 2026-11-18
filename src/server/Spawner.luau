@@ -1,3 +1,4 @@
+-- The conveyor advances its pickups on the server.
 local RunService = game:GetService("RunService")
 local Spawner = {}
 

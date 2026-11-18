@@ -1,3 +1,4 @@
+-- The server publishes the phase clock and resolves wave hits.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 

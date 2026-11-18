@@ -31,7 +31,11 @@
           "Anchored": true,
           "Color": [1.0, 0.7451, 0.2353],
           "Locked": true,
-          "Position": [0, -10, 0],
+          "Position": [
+            0,
+            -10,
+            0
+          ],
           "Size": [512, 20, 512]
         }
       }

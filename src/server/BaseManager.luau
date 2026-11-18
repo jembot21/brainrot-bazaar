@@ -1,3 +1,4 @@
+-- Base assignments associate players with the plots built by WorldBuilder.
 local Players = game:GetService("Players")
 
 local Bases = {Assigned = {}}

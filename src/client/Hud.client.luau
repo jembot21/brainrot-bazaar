@@ -1,3 +1,4 @@
+-- The HUD reads the server's replicated stats and phase clock.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")

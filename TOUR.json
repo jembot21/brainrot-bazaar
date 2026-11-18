@@ -9,12 +9,18 @@
     },
     {
       "screenshot": "2-base.png",
-      "keys": ["E", "W"],
+      "keys": [
+        "E",
+        "W"
+      ],
       "call": "Catch and place three of the same species on separate pads, then frame the fused brainrot alongside another placed brainrot."
     },
     {
       "screenshot": "3-wave.png",
-      "keys": ["E", "W"],
+      "keys": [
+        "E",
+        "W"
+      ],
       "call": "Wait at the ocean end of the belt during the warning. Press E to catch, then run toward the bases. Turn the camera back toward the ocean while you run."
     },
     {

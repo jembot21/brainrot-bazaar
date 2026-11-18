@@ -1,3 +1,4 @@
+-- Banners and lighting effects run locally for each player.
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

@@ -1,3 +1,4 @@
+-- Cast builders share the Body and Accessory contract used by the display and carry systems.
 local Data = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("BrainrotData"))
 local CharacterFactory = {}
 

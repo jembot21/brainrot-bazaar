@@ -1,4 +1,4 @@
-// Brainrot Tsunami Escape competition hand-in.
+// Package the Brainrot Tsunami Escape place and source for the competition hand-in.
 import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';

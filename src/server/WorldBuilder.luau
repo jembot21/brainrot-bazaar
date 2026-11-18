@@ -96,22 +96,35 @@ local function cylinder(parent, name, diameter, height, frame, color, material)
 	return piece
 end
 
+local function palmFronds(parent, crown, count, size, color, yawOffset, tilt, reach, rootHeight)
+	-- Local +X points outward. At zero yaw, the lower blade spans X = -0.50 to 6.30
+	-- relative to the crown, crossing the trunk axis about 0.10 studs below the crown centre.
+	local drop = size.X / 2 * math.sin(tilt)
+	for index = 0, count - 1 do
+		local yaw = CFrame.Angles(0, yawOffset + index * 2 * math.pi / count, 0)
+		local frame = crown * yaw * CFrame.new(reach, rootHeight - drop, 0) * CFrame.Angles(0, 0, -tilt)
+		decorPart(parent, "PalmFrond", size, frame, color)
+	end
+end
+
 local function palm(parent, palette, ground)
-	for segment = 1, 3 do
-		local center = ground + Vector3.new((segment - 0.5) * 0.36, (segment - 0.5) * 2.55, 0)
-		cylinder(parent, "PalmTrunk", 1.45 - segment * 0.16, 2.75,
-			CFrame.new(center) * CFrame.Angles(0, 0, -0.14), palette.Trunk, Enum.Material.Wood)
+	local segmentLength = 2.2
+	local trunkTop = ground
+	for segment = 1, 4 do
+		local lean = CFrame.Angles(0, 0, -math.rad(4 + segment * 2))
+		local center = trunkTop + lean.UpVector * (segmentLength / 2)
+		cylinder(parent, "PalmTrunk", 1.15, segmentLength, CFrame.new(center) * lean, palette.Trunk, Enum.Material.Wood)
+		trunkTop += lean.UpVector * (segmentLength - 0.04)
 	end
 
-	local crown = CFrame.new(ground + Vector3.new(1.08, 7.7, 0))
-	for index = 1, 6 do
-		local frame = crown * CFrame.Angles(0, index * math.pi / 3, 0)
-		local droop = CFrame.Angles(0, 0, -0.30 - (index % 2) * 0.15)
-		ball(parent, "PalmFrond", palette.FrondSize, frame * droop * CFrame.new(2.35, 0, 0),
-			palette.Fronds[(index - 1) % #palette.Fronds + 1])
-	end
-	for _, side in ipairs({-1, 1}) do
-		ball(parent, "Coconut", palette.CoconutSize, crown * CFrame.new(0.3, -0.52, side * 0.52), palette.Coconut)
+	local crown = CFrame.new(trunkTop)
+	palmFronds(parent, crown, palette.FrondCount, palette.FrondSize, palette.Frond, 0, palette.FrondTilt, 2.9, 0.24)
+	palmFronds(parent, crown, palette.FrondTopCount, palette.FrondTopSize, palette.FrondLight, math.rad(36),
+		palette.FrondTopTilt, 2.1, 0.35)
+
+	for index = 0, 2 do
+		local yaw = CFrame.Angles(0, index * 2 * math.pi / 3, 0)
+		ball(parent, "Coconut", palette.CoconutSize, crown * yaw * CFrame.new(0.48, -0.5, 0), palette.Coconut)
 	end
 end
 

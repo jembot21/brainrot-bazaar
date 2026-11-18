@@ -1,3 +1,4 @@
+-- Player balances and income live in server state.
 local Economy = {Players = {}}
 
 function Economy.Init(data, events)

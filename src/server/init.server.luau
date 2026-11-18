@@ -1,3 +1,4 @@
+-- Rojo mounts the server modules as children of this script.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
