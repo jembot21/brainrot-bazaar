@@ -431,13 +431,13 @@ function CharacterFactory.Build(definition, rarity, mutation, income, promptActi
 	model.PrimaryPart = bodyPart
 	model.WorldPivot = CFrame.new(0, 2, 0)
 
-	-- BrainrotLabel BillboardGui
+	-- Billboard size is in studs, so labels appear smaller at a distance.
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "BrainrotLabel"
-	billboard.Size = UDim2.fromOffset(260, 86)
+	billboard.Size = UDim2.fromScale(6.5, 2)
 	billboard.StudsOffset = Vector3.new(0, 5.6, 0)
 	billboard.AlwaysOnTop = true
-	billboard.MaxDistance = 150
+	billboard.MaxDistance = 85
 	billboard.Parent = bodyPart
 
 	local label = Instance.new("TextLabel")

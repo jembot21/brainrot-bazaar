@@ -1,4 +1,5 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local WorldBuilder = {}
 WorldBuilder.Data = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("BrainrotData"))
 

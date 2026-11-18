@@ -88,6 +88,7 @@ for _, player in ipairs(Players:GetPlayers()) do
 	task.spawn(onPlayer, player)
 end
 
+-- Start the game loops after connecting the player lifecycle handlers.
 Economy.Start()
 Spawner.Start(Data, world, Economy, CharacterFactory, events)
 WaveEvent.Start(world, Data.Wave, Economy, Bases, events)

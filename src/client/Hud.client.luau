@@ -158,6 +158,7 @@ local phaseStyles = {
 }
 -- Cache the status text while the progress fill updates each frame.
 local displayedStatus
+
 RunService.RenderStepped:Connect(function()
 	local style = phaseStyles[world:GetAttribute("WavePhase")] or phaseStyles.CALM
 	local endsAt = world:GetAttribute("WaveEndsAt") or workspace:GetServerTimeNow()

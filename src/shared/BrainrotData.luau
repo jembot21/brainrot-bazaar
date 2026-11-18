@@ -1,4 +1,5 @@
 local Data = {}
+
 Data.RarityOrder = {"Common", "Rare", "Epic", "Legendary", "Mythic"}
 Data.Rarities = {
 	Common = {weight = 52, price = 25, incomePerSecond = 2, color = Color3.fromRGB(246, 205, 91), shape = Enum.PartType.Ball},

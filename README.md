@@ -10,6 +10,8 @@ Race from a beach lined with broad, two-tier palm crowns past the orange-roofed 
 
 ## How to play
 
+Brainrot name labels shrink with distance and are visible within 85 studs.
+
 1. Start with $150. Go to the beach conveyor and use the Catch prompt to buy one of the passing brainrots.
 2. Run back to your plot with the brainrot on your head and step on an empty display pad. Placed brainrots earn cash every second.
 3. Place three of the same species to fuse them into a brainrot from the next rarity tier. The result keeps the strongest mutation among the three. The result uses the same position in the next tier’s cast, or that tier’s first species if it has fewer entries. Three matching Mythics fuse into the same Mythic species.

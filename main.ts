@@ -24,7 +24,7 @@ mkdirSync(outputDirectory, { recursive: true });
 copyFileSync(placeFile, join(outputDirectory, 'game.rbxl'));
 copyFileSync(playPath, join(outputDirectory, 'PLAY.json'));
 
-// Exclude dotfiles and hidden folders at all directory levels during packaging
+// Exclude dotfiles and hidden folders at all directory levels during packaging.
 const visibleEntry = (source: string) => !basename(source).startsWith('.');
 
 cpSync(join(projectDirectory, 'src'), join(outputDirectory, 'src'), {

@@ -108,4 +108,5 @@ function WaveEvent.Start(world, config, economy, bases, events)
 	end)
 end
 
+
 return WaveEvent

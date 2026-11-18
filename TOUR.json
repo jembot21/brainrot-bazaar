@@ -9,10 +9,7 @@
     },
     {
       "screenshot": "2-base.png",
-      "keys": [
-        "E",
-        "W"
-      ],
+      "keys": ["E", "W"],
       "call": "Catch and place three of the same species on separate pads, then frame the fused brainrot alongside another placed brainrot."
     },
     {

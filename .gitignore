@@ -5,7 +5,7 @@
 # Local Node dependencies
 /node_modules/
 
-# Local logs and editor backups
+# Local logs, Roblox place locks, and editor backups
 *.log
 *.rbxl.lock
 *~

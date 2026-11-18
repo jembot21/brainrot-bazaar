@@ -46,6 +46,7 @@ local function banner(title, color, y, hold, height)
 end
 
 local lastPhase
+
 local function warning(title, duration, height)
 	if lastPhase == "WARNING" then return end
 	lastPhase = "WARNING"

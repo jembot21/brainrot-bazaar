@@ -103,4 +103,5 @@ function Spawner.Start(data, world, economy, factory, events)
 	end)
 end
 
+
 return Spawner
