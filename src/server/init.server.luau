@@ -1,36 +1,33 @@
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local WorldBuilder = require(script.Parent.WorldBuilder)
-local Economy = require(script.Parent.Economy)
-local BaseManager = require(script.Parent.BaseManager)
-local Spawner = require(script.Parent.Spawner)
-local WaveEvent = require(script.Parent.WaveEvent)
-
-local remoteFolder = ReplicatedStorage:FindFirstChild("BrainrotRemotes")
-if not remoteFolder then
-	remoteFolder = Instance.new("Folder")
-	remoteFolder.Name = "BrainrotRemotes"
-	remoteFolder.Parent = ReplicatedStorage
-end
-
-local remoteNames = {
-	"CashChanged", "BuySpeed", "Rebirth", "Toast", "WaveStatus", "WaveWarning",
-	"Caught", "PurchaseSparkle", "CameraShake",
-}
-local remotes = {}
-for _, name in ipairs(remoteNames) do
-	local remote = remoteFolder:FindFirstChild(name)
-	if not remote then
-		remote = Instance.new("RemoteEvent")
-		remote.Name = name
-		remote.Parent = remoteFolder
-	end
-	remotes[name] = remote
-end
-
-local world = WorldBuilder.Build()
-Economy.Start(remotes, BaseManager.GetPlaced)
-BaseManager.Start(world, Economy, remotes)
-Spawner.Start(world, Economy, BaseManager, remotes)
-WaveEvent.Start(BaseManager, Economy, remotes)
-
-print("Brainrot Tsunami Escape services started")
+local ReplicatedStorage=game:GetService("ReplicatedStorage")
+local Players=game:GetService("Players")
+local World=require(script.WorldBuilder)
+local Economy=require(script.Economy)
+local Base=require(script.BaseManager)
+local Spawner=require(script.Spawner)
+local Wave=require(script.WaveEvent)
+local network=Instance.new("Folder"); network.Name="IslandNetwork"; network.Parent=ReplicatedStorage
+local event=Instance.new("RemoteEvent"); event.Name="Event"; event.Parent=network
+local action=Instance.new("RemoteEvent"); action.Name="Action"; action.Parent=network
+local world=World.Build()
+Economy.Start(Base)
+Base.Start(world,Economy,event)
+Spawner.Start(world,Economy,Base,event)
+Wave.Start(world,Economy,Base,event)
+local cooldown={}
+action.OnServerEvent:Connect(function(player,verb)
+ if type(verb)~="string" then return end
+ local now=os.clock()
+ if cooldown[player] and now-cooldown[player]<0.25 then return end
+ cooldown[player]=now
+ if verb=="Sync" then event:FireClient(player,"Wave",Wave.State)
+ elseif verb=="Speed" then
+  local ok=Economy.BuySpeed(player)
+  event:FireClient(player,"Toast",ok and "Speed upgraded!" or "Not enough cash, or speed is maxed.")
+  if ok then event:FireClient(player,"Purchase") end
+ elseif verb=="Rebirth" then
+  local ok=Economy.Rebirth(player)
+  event:FireClient(player,"Toast",ok and "Reborn! Your permanent session income multiplier increased by 0.5×." or "Rebirth requires $25,000.")
+  if ok then event:FireClient(player,"Purchase") end
+ end
+end)
+Players.PlayerRemoving:Connect(function(player) cooldown[player]=nil end)

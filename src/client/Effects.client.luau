@@ -1,142 +1,57 @@
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
-local CollectionService = game:GetService("CollectionService")
-
-local player = Players.LocalPlayer
-local remotes = ReplicatedStorage:WaitForChild("BrainrotRemotes")
-local gui = Instance.new("ScreenGui")
-gui.Name = "IslandEffects"
-gui.IgnoreGuiInset = true
-gui.ResetOnSpawn = false
-gui.DisplayOrder = 10
-gui.Parent = player:WaitForChild("PlayerGui")
-
-local edges = {}
-for _, spec in ipairs({
-	{ Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 0, 0, 0) },
-	{ Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 0, 1, -16) },
-	{ Size = UDim2.new(0, 16, 1, 0), Position = UDim2.new(0, 0, 0, 0) },
-	{ Size = UDim2.new(0, 16, 1, 0), Position = UDim2.new(1, -16, 0, 0) },
-}) do
-	local edge = Instance.new("Frame")
-	edge.Size = spec.Size
-	edge.Position = spec.Position
-	edge.BorderSizePixel = 0
-	edge.BackgroundColor3 = Color3.fromRGB(238, 71, 74)
-	edge.BackgroundTransparency = 1
-	edge.Parent = gui
-	table.insert(edges, edge)
+local Players=game:GetService("Players")
+local RunService=game:GetService("RunService")
+local TweenService=game:GetService("TweenService")
+local Debris=game:GetService("Debris")
+local player=Players.LocalPlayer
+local event=game.ReplicatedStorage:WaitForChild("IslandNetwork"):WaitForChild("Event")
+local gui=Instance.new("ScreenGui"); gui.Name="TsunamiEffects"; gui.IgnoreGuiInset=true; gui.ResetOnSpawn=false; gui.DisplayOrder=5; gui.Parent=player:WaitForChild("PlayerGui")
+local borders={}
+for _,box in ipairs({{0,0,1,0.07},{0,0.93,1,0.07},{0,0,0.045,1},{0.955,0,0.045,1}}) do
+ local frame=Instance.new("Frame"); frame.BorderSizePixel=0; frame.Position=UDim2.fromScale(box[1],box[2]); frame.Size=UDim2.fromScale(box[3],box[4]); frame.BackgroundColor3=Color3.fromRGB(246,62,79); frame.BackgroundTransparency=1; frame.Parent=gui
+ table.insert(borders,frame)
 end
-
-local warningToken = 0
-remotes.WaveWarning.OnClientEvent:Connect(function()
-	warningToken += 1
-	local token = warningToken
-	task.spawn(function()
-		local finish = os.clock() + 10
-		while os.clock() < finish and token == warningToken do
-			for _, edge in ipairs(edges) do
-				TweenService:Create(edge, TweenInfo.new(0.35), { BackgroundTransparency = 0.2 }):Play()
-			end
-			task.wait(0.4)
-			for _, edge in ipairs(edges) do
-				TweenService:Create(edge, TweenInfo.new(0.45), { BackgroundTransparency = 0.82 }):Play()
-			end
-			task.wait(0.5)
-		end
-		for _, edge in ipairs(edges) do
-			TweenService:Create(edge, TweenInfo.new(0.5), { BackgroundTransparency = 1 }):Play()
-		end
-	end)
+local warning=false; local shakeUntil=0; local shakeStrength=0
+RunService:BindToRenderStep("IslandWaveEffects",Enum.RenderPriority.Camera.Value+1,function()
+ local now=os.clock()
+ for _,frame in ipairs(borders) do frame.BackgroundTransparency=warning and (0.72+math.sin(now*7)*0.13) or 1 end
+ local camera=workspace.CurrentCamera
+ if camera and now<shakeUntil then
+  local strength=math.min(shakeUntil-now,1)*shakeStrength
+  camera.CFrame*=CFrame.new(math.noise(now*29,0)*strength,math.noise(0,now*31)*strength,0)
+ end
 end)
-
-local function bead(position, color, direction, scale)
-	local drop = Instance.new("Part")
-	drop.Name = "SplashBead"
-	drop.Shape = Enum.PartType.Ball
-	drop.Size = Vector3.new(scale, scale, scale)
-	drop.Position = position
-	drop.Color = color
-	drop.Material = Enum.Material.Neon
-	drop.Anchored = true
-	drop.CanCollide = false
-	drop.Parent = workspace
-	local tween = TweenService:Create(drop, TweenInfo.new(0.65, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-		Position = position + direction,
-		Transparency = 1,
-		Size = Vector3.new(0.08, 0.08, 0.08),
-	})
-	tween:Play()
-	tween.Completed:Connect(function() drop:Destroy() end)
+local function burst(position,color,count)
+ local anchor=Instance.new("Part"); anchor.Name="LocalSplash"; anchor.Size=Vector3.one; anchor.Position=position; anchor.Anchored=true; anchor.CanCollide=false; anchor.CanTouch=false; anchor.CanQuery=false; anchor.Transparency=1; anchor.Parent=workspace
+ local emitter=Instance.new("ParticleEmitter"); emitter.Color=ColorSequence.new(color)
+ emitter.Rate=0; emitter.Lifetime=NumberRange.new(0.4,0.9); emitter.Speed=NumberRange.new(6,15)
+ emitter.SpreadAngle=Vector2.new(150,150); emitter.Acceleration=Vector3.new(0,-18,0)
+ emitter.Size=NumberSequence.new({NumberSequenceKeypoint.new(0,0.5),NumberSequenceKeypoint.new(1,0)})
+ emitter.Parent=anchor; emitter:Emit(count); Debris:AddItem(anchor,2)
 end
-
-remotes.Caught.OnClientEvent:Connect(function(loss)
-	local character = player.Character
-	local root = character and character:FindFirstChild("HumanoidRootPart")
-	if root then
-		for index = 1, 18 do
-			local angle = index / 18 * math.pi * 2
-			bead(root.Position, Color3.fromRGB(62, 195, 228), Vector3.new(math.cos(angle) * 5, math.random() * 4 + 1, math.sin(angle) * 5), math.random(3, 7) / 10)
-		end
-	end
-	local message = Instance.new("TextLabel")
-	message.Name = "CaughtMessage"
-	message.AnchorPoint = Vector2.new(0.5, 0.5)
-	message.Position = UDim2.fromScale(0.5, 0.43)
-	message.Size = UDim2.fromOffset(480, 76)
-	message.BackgroundTransparency = 1
-	message.Font = Enum.Font.GothamBlack
-	message.TextColor3 = Color3.fromRGB(255, 230, 236)
-	message.TextStrokeTransparency = 0.25
-	message.TextScaled = true
-	message.Text = "CAUGHT! Lost carried brainrot + $" .. tostring(loss)
-	message.Parent = gui
-	TweenService:Create(message, TweenInfo.new(1.8), { TextTransparency = 1, TextStrokeTransparency = 1, Position = UDim2.fromScale(0.5, 0.34) }):Play()
-	task.delay(2, function() message:Destroy() end)
+event.OnClientEvent:Connect(function(kind,data)
+ if kind=="Warning" then warning=true
+ elseif kind=="Wave" then warning=data.Phase~="CALM"
+ elseif kind=="Shake" then shakeUntil=os.clock()+(data.Duration or 1); shakeStrength=data.Strength or 0.3
+ elseif kind=="Caught" then
+  burst(data,Color3.fromRGB(153,233,255),60)
+  shakeUntil=os.clock()+0.8; shakeStrength=0.6
+ elseif kind=="Purchase" then
+  local root=player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+  if root then burst(root.Position+Vector3.new(0,2,0),Color3.fromRGB(255,227,112),30) end
+ end
 end)
-
-remotes.PurchaseSparkle.OnClientEvent:Connect(function(position)
-	for index = 1, 14 do
-		local angle = index / 14 * math.pi * 2
-		local color = Color3.fromHSV(index / 14, 0.65, 1)
-		bead(position + Vector3.new(0, 1.3, 0), color, Vector3.new(math.cos(angle) * 2.8, math.random(2, 5), math.sin(angle) * 2.8), 0.26)
-	end
-end)
-
-remotes.CameraShake.OnClientEvent:Connect(function(duration, magnitude)
-	local camera = workspace.CurrentCamera
-	if not camera then return end
-	local started = os.clock()
-	local connection
-	local base = camera.CFrame
-	connection = game:GetService("RunService").RenderStepped:Connect(function()
-		local elapsed = os.clock() - started
-		if elapsed >= duration then
-			camera.CFrame = base
-			connection:Disconnect()
-			return
-		end
-		local falloff = 1 - elapsed / duration
-		local offset = Vector3.new(math.random() - 0.5, math.random() - 0.5, 0) * magnitude * falloff
-		camera.CFrame = base * CFrame.new(offset)
-	end)
-end)
-
-local function addMutationSparkle(instance)
-	if not instance:IsA("BasePart") then return end
-	local model = instance:FindFirstAncestorOfClass("Model")
-	if not model or model:GetAttribute("Mutation") ~= "Rainbow" or not model.PrimaryPart then return end
-	if model.PrimaryPart:FindFirstChild("ClientMutationSparkle") then return end
-	local sparkles = Instance.new("Sparkles")
-	sparkles.Name = "ClientMutationSparkle"
-	sparkles.SparkleColor = Color3.fromRGB(255, 137, 232)
-	sparkles.Parent = model.PrimaryPart
+local function mutationEffect(object)
+ if not object:IsA("Model") then return end
+ local mutation=object:GetAttribute("Mutation")
+ if mutation~="Gold" and mutation~="Diamond" then return end
+ local body=object:FindFirstChild("Body")
+ if body and not body:FindFirstChild("MutationShimmer") then
+  local sparkles=Instance.new("Sparkles"); sparkles.Name="MutationShimmer"
+  sparkles.SparkleColor=mutation=="Gold" and Color3.fromRGB(255,217,78) or Color3.fromRGB(143,236,255)
+  sparkles.Parent=body
+ end
 end
-
-for _, instance in ipairs(CollectionService:GetTagged("BrainrotCharacter")) do
-	addMutationSparkle(instance)
-end
-CollectionService:GetInstanceAddedSignal("BrainrotCharacter"):Connect(function(instance)
-	task.defer(addMutationSparkle, instance)
-end)
+workspace.DescendantAdded:Connect(mutationEffect)
+for _,object in ipairs(workspace:GetDescendants()) do mutationEffect(object) end
+-- TweenService is reserved for subsequent screen transitions; effects stay local.
+gui.Destroying:Connect(function() RunService:UnbindFromRenderStep("IslandWaveEffects") end)

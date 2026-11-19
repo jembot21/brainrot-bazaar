@@ -1,10 +1,10 @@
 {
-  "title": "Escape the Brainrot Tsunami",
+  "title": "A lap of Tideglass Island",
   "stops": [
-    { "name": "Your Base", "description": "Collect cash from placed brainrots and protect your six pads." },
-    { "name": "Offer Belt", "description": "Buy a rarity-rolled brainrot, carry it home, and place it." },
-    { "name": "Sandy Beach", "description": "Explore the island edge, then race back before the next wave." },
-    { "name": "High Ground", "description": "Climb the central hill when the tsunami warning begins." },
-    { "name": "Fusion Corner", "description": "Fuse three matching brainrots on your pads into a higher tier." }
+    {"name": "Your Base", "position": [-99, 6, -91], "description": "Place creatures on six income pads; your own base protects you from every wave."},
+    {"name": "Spawner Belt", "position": [0, 6, 12], "description": "Buy moving offers and look for Gold, Diamond, or Rainbow mutations."},
+    {"name": "Palm Beach", "position": [0, 5, 140], "description": "Explore the palm-lined shore, but watch the wave countdown."},
+    {"name": "High Ground", "position": [95, 28, 0], "description": "Climb the stone steps to shelter above even the eighteen-stud tsunami."},
+    {"name": "Fusion Corner", "position": [35, 5, -22], "description": "Keep three matching species on your pads, then fuse them into the next rarity tier."}
   ]
 }

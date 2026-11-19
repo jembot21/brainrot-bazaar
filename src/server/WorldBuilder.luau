@@ -1,149 +1,79 @@
-local CollectionService = game:GetService("CollectionService")
-
-local WorldBuilder = {}
-local root
-
-local function block(name, size, position, color, material, parent, tag)
-	local item = Instance.new("Part")
-	item.Name = name
-	item.Size = size
-	item.Position = position
-	item.Color = color
-	item.Material = material or Enum.Material.SmoothPlastic
-	item.Anchored = true
-	item.TopSurface = Enum.SurfaceType.Smooth
-	item.BottomSurface = Enum.SurfaceType.Smooth
-	item.Parent = parent or root
-	CollectionService:AddTag(item, tag or "Island")
-	return item
+local Tags=game:GetService("CollectionService")
+local W={Plots={}}
+function W.Build()
+ local folder=Instance.new("Folder"); folder.Name="TideglassIsland"; folder.Parent=workspace
+ W.Folder=folder
+ local function part(name,size,pos,color,area,material)
+  local p=Instance.new("Part"); p.Name=name; p.Anchored=true
+  p.Size=size; p.Position=pos; p.Color=color; p.Material=material or Enum.Material.SmoothPlastic
+  p.TopSurface=Enum.SurfaceType.Smooth; p.BottomSurface=Enum.SurfaceType.Smooth
+  p:SetAttribute("Area",area); Tags:AddTag(p,area); p.Parent=folder
+  return p
+ end
+ W.Part=part
+ part("OceanFloor",Vector3.new(800,3,800),Vector3.new(0,-12,0),Color3.fromRGB(36,103,136),"Ocean",Enum.Material.Sand)
+ local ocean=part("Ocean",Vector3.new(790,1,790),Vector3.new(0,-3,0),Color3.fromRGB(38,158,201),"Ocean")
+ ocean.Transparency=0.3; ocean.CanCollide=false
+ part("BeachRing",Vector3.new(300,3,300),Vector3.new(0,-1.5,0),Color3.fromRGB(245,216,155),"Beach",Enum.Material.Sand)
+ part("IslandGround",Vector3.new(268,3,268),Vector3.new(0,-0.5,0),Color3.fromRGB(99,180,110),"Island",Enum.Material.Grass)
+ for i=1,8 do
+  local col=(i-1)%4; local row=math.floor((i-1)/4)
+  local center=Vector3.new(-99+col*66,1.2,row==0 and -91 or 91)
+  local plot={Center=center,Pads={},Index=i}
+  plot.Floor=part("Base"..i,Vector3.new(54,0.6,48),center,Color3.fromRGB(60+i*10,102,139),"Base")
+  for j=1,6 do
+   local p=center+Vector3.new(((j-1)%3-1)*15,0.9,(math.floor((j-1)/3)-0.5)*22)
+   plot.Pads[j]=part("Plot"..i.."Pad"..j,Vector3.new(10,1,9),p,Color3.fromRGB(237,207,112),"Pads",Enum.Material.Neon)
+  end
+  W.Plots[i]=plot
+ end
+ W.Belt=part("OfferBelt",Vector3.new(112,1,12),Vector3.new(0,2,0),Color3.fromRGB(40,53,72),"Market",Enum.Material.Metal)
+ for x=-54,54,6 do part("BeltStripe",Vector3.new(0.4,0.08,11),Vector3.new(x,2.55,0),Color3.fromRGB(95,218,213),"Market") end
+ for _,x in ipairs({-95,95}) do
+  part("HighGroundRefuge",Vector3.new(32,3,40),Vector3.new(x,23,0),Color3.fromRGB(116,129,141),"HighGround",Enum.Material.Slate)
+  for step=1,12 do
+   part("RefugeStep"..step,Vector3.new(16,2,4),Vector3.new(x,step*2-1,49-step*4),Color3.fromRGB(148,153,153),"HighGround",Enum.Material.Slate)
+  end
+ end
+ local function stand(name,x,z,color)
+  local p=part(name,Vector3.new(14,3,9),Vector3.new(x,2.5,z),color,"Shops")
+  part(name.."Roof",Vector3.new(18,1,12),Vector3.new(x,10,z),color,"Shops")
+  for _,dx in ipairs({-6,6}) do part(name.."Post",Vector3.new(0.8,7,0.8),Vector3.new(x+dx,6,z),Color3.fromRGB(111,76,57),"Shops") end
+  local gui=Instance.new("BillboardGui"); gui.Size=UDim2.fromScale(8,1.5); gui.StudsOffset=Vector3.new(0,6,0); gui.MaxDistance=100; gui.Parent=p
+  local text=Instance.new("TextLabel"); text.Size=UDim2.fromScale(1,1); text.BackgroundTransparency=1; text.Text=name; text.TextScaled=true; text.Font=Enum.Font.GothamBold; text.TextColor3=Color3.new(1,1,1); text.Parent=gui
+  return p
+ end
+ W.SpeedStand=stand("Speed Shop",-35,-32,Color3.fromRGB(66,180,218))
+ W.SellStand=stand("Sell Carried",0,-32,Color3.fromRGB(239,164,73))
+ W.FusionStand=stand("Fusion Corner",35,-32,Color3.fromRGB(176,105,226))
+ local spawn=Instance.new("SpawnLocation"); spawn.Name="IslandArrival"; spawn.Size=Vector3.new(12,1,12); spawn.Position=Vector3.new(0,2,35); spawn.Anchored=true; spawn.Neutral=true; spawn.Duration=0; spawn.Parent=folder; Tags:AddTag(spawn,"Arrival")
+ -- Twenty palms, each with a two-layer broad crown made entirely from parts.
+ for i=1,20 do
+  local angle=i*math.pi*2/20; local x=math.cos(angle)*139; local z=math.sin(angle)*139
+  part("PalmTrunk"..i,Vector3.new(2,14,2),Vector3.new(x,6,z),Color3.fromRGB(132,91,58),"Beach",Enum.Material.Wood)
+  for layer=1,2 do for axis=0,2 do
+   local leaf=part("PalmFrond",Vector3.new(19-layer*2,0.7,4),Vector3.new(x,12+layer*1.2,z),Color3.fromRGB(45,133+layer*15,76),"Beach",Enum.Material.Grass)
+   leaf.Orientation=Vector3.new(0,axis*60+layer*25,layer==1 and 8 or -8)
+  end end
+ end
+ local rng=Random.new(927)
+ -- 250 extra scenery pieces, kept along the beach perimeter for clear paths.
+ for i=1,250 do
+  local angle=rng:NextNumber()*math.pi*2; local radius=rng:NextNumber(136,147)
+  local pos=Vector3.new(math.cos(angle)*radius,1,math.sin(angle)*radius)
+  local kind=i%5
+  if kind==0 then
+   local p=part("BeachRock",Vector3.new(3,2,3),pos,Color3.fromRGB(137,148,154),"Decor",Enum.Material.Slate); p.Shape=Enum.PartType.Ball
+  elseif kind==1 then
+   local p=part("Bush",Vector3.new(4,3,4),pos,Color3.fromRGB(53,137,77),"Decor",Enum.Material.Grass); p.Shape=Enum.PartType.Ball
+  elseif kind==2 then
+   local p=part("Fence",Vector3.new(5,2.5,0.5),pos,Color3.fromRGB(173,127,79),"Decor",Enum.Material.Wood); p.Orientation=Vector3.new(0,math.deg(angle),0)
+  elseif kind==3 then
+   local p=part("Lamp",Vector3.new(1,5,1),pos+Vector3.new(0,1.5,0),Color3.fromRGB(255,223,139),"Decor",Enum.Material.Neon)
+   local light=Instance.new("PointLight"); light.Range=10; light.Brightness=0.5; light.Parent=p
+  else part("Crate",Vector3.new(3,3,3),pos,Color3.fromRGB(163,112,66),"Decor",Enum.Material.WoodPlanks) end
+ end
+ game:GetService("Lighting").ClockTime=14
+ return W
 end
-
-local function sign(name, text, position, color)
-	local board = block(name, Vector3.new(5, 2.3, 0.35), position, color, Enum.Material.WoodPlanks)
-	local gui = Instance.new("SurfaceGui")
-	gui.Face = Enum.NormalId.Front
-	gui.Parent = board
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Font = Enum.Font.GothamBlack
-	label.TextScaled = true
-	label.TextColor3 = Color3.new(1, 1, 1)
-	label.Text = text
-	label.Parent = gui
-	return board
-end
-
-local function palm(x, z)
-	local trunk = block("PalmTrunk", Vector3.new(1.1, 11, 1.1), Vector3.new(x, 6.1, z), Color3.fromRGB(126, 88, 56), Enum.Material.Wood)
-	trunk.Orientation = Vector3.new(0, 0, 7)
-	for ring = 1, 2 do
-		local y = 11.2 + (ring - 1) * 0.48
-		for i = 1, 7 do
-			local angle = math.rad((i - 1) * (360 / 7) + ring * 16)
-			local frond = block("PalmFrond", Vector3.new(1.0, 0.35, 6.5), Vector3.new(x + math.cos(angle) * 2.0, y, z + math.sin(angle) * 2.0), ring == 1 and Color3.fromRGB(53, 149, 93) or Color3.fromRGB(75, 177, 107), Enum.Material.Grass)
-			frond.Orientation = Vector3.new(0, -math.deg(angle), -12)
-		end
-	end
-end
-
-local function makeBase(index)
-	local row = math.floor((index - 1) / 4)
-	local col = (index - 1) % 4
-	local x = (col - 1.5) * 54
-	local z = (row - 0.5) * 54 + 37
-	local folder = Instance.new("Model")
-	folder.Name = "Plot" .. index
-	folder:SetAttribute("PlotIndex", index)
-	folder.Parent = root
-	CollectionService:AddTag(folder, "PlayerBase")
-	block("BaseFloor", Vector3.new(48, 1, 42), Vector3.new(x, 1.6, z), Color3.fromRGB(91, 194, 145), Enum.Material.Grass, folder, "PlayerBase")
-	block("BaseBorder", Vector3.new(48, 0.5, 1), Vector3.new(x, 2.3, z - 20), Color3.fromRGB(240, 218, 151), Enum.Material.Sand, folder, "PlayerBase")
-	for padIndex = 1, 6 do
-		local padCol = (padIndex - 1) % 3
-		local padRow = math.floor((padIndex - 1) / 3)
-		local padX = x + (padCol - 1) * 12
-		local padZ = z - 5 + padRow * 13
-		local pad = block("Pad" .. padIndex, Vector3.new(9, 0.7, 9), Vector3.new(padX, 2.45, padZ), Color3.fromRGB(76, 214, 188), Enum.Material.Neon, folder, "BrainrotPad")
-		pad:SetAttribute("PlotIndex", index)
-		pad:SetAttribute("PadIndex", padIndex)
-		pad:SetAttribute("Occupied", false)
-	end
-	local spawn = Instance.new("SpawnLocation")
-	spawn.Name = "PlotSpawn"
-	spawn.Size = Vector3.new(6, 1, 6)
-	spawn.Position = Vector3.new(x, 2.5, z + 14)
-	spawn.Anchored = true
-	spawn.Neutral = true
-	spawn.Duration = 0
-	spawn.Parent = folder
-	return { Index = index, Model = folder, Center = Vector3.new(x, 2, z), Spawn = spawn }
-end
-
-function WorldBuilder.Build()
-	local existing = workspace:FindFirstChild("BrainrotIsland")
-	if existing then
-		existing:Destroy()
-	end
-	root = Instance.new("Model")
-	root.Name = "BrainrotIsland"
-	root.Parent = workspace
-	block("Island", Vector3.new(248, 4, 190), Vector3.new(0, -1, 0), Color3.fromRGB(81, 183, 129), Enum.Material.Grass)
-	block("BeachRing", Vector3.new(270, 3, 212), Vector3.new(0, -2, 0), Color3.fromRGB(241, 218, 155), Enum.Material.Sand)
-	block("OceanFloor", Vector3.new(550, 4, 500), Vector3.new(0, -6, 0), Color3.fromRGB(38, 148, 188), Enum.Material.Sand, workspace, "Ocean")
-	block("TidePool", Vector3.new(280, 2, 220), Vector3.new(0, -3.2, 0), Color3.fromRGB(52, 173, 205), Enum.Material.Water, root, "Ocean")
-	block("MainLand", Vector3.new(242, 3, 184), Vector3.new(0, 0.3, 0), Color3.fromRGB(91, 194, 145), Enum.Material.Grass)
-	block("HighGroundHill", Vector3.new(46, 18, 38), Vector3.new(0, 8, -60), Color3.fromRGB(91, 159, 111), Enum.Material.Grass, root, "HighGround")
-	block("HighGroundPlatform", Vector3.new(34, 2, 29), Vector3.new(0, 18, -60), Color3.fromRGB(224, 201, 131), Enum.Material.Sand, root, "HighGround")
-	for step = 0, 8 do
-		block(
-			"HighGroundStep" .. (step + 1),
-			Vector3.new(4.5, 2, 17),
-			Vector3.new(41 - step * 2.25, 2.8 + step * 1.8, -60),
-			Color3.fromRGB(125, 197, 125),
-			Enum.Material.Grass,
-			root,
-			"HighGround"
-		)
-	end
-	for _, p in ipairs({ { -105, -67 }, { 107, -61 }, { -109, 55 }, { 110, 57 }, { -72, -80 }, { 73, -82 }, { -72, 83 }, { 73, 81 } }) do
-		palm(p[1], p[2])
-	end
-	for index = 1, 8 do
-		makeBase(index)
-	end
-
-	local belt = block("OfferBelt", Vector3.new(44, 1, 10), Vector3.new(0, 2, -2), Color3.fromRGB(56, 76, 92), Enum.Material.Metal, root, "SpawnerArea")
-	belt:SetAttribute("OfferBelt", true)
-	sign("BeltSign", "BRAINROT BELT", Vector3.new(0, 5, -8), Color3.fromRGB(222, 120, 77))
-	for tier = 1, 3 do
-		local x = -44 + tier * 44
-		local stand = block("ShopStand" .. tier, Vector3.new(13, 3, 9), Vector3.new(x, 2.5, -41), Color3.fromRGB(100 + tier * 24, 128, 212 - tier * 24), Enum.Material.SmoothPlastic, root, "ShopStand")
-		stand:SetAttribute("ShopType", tier == 1 and "Speed" or tier == 2 and "Rebirth" or "Sell")
-		sign("ShopSign" .. tier, tier == 1 and "SPEED" or tier == 2 and "REBIRTH" or "SELL", Vector3.new(x, 5.4, -46), stand.Color)
-	end
-	for i = 1, 310 do
-		local x = ((i * 37) % 220) - 110
-		local z = ((i * 61) % 158) - 78
-		if not (math.abs(x) < 25 and math.abs(z) < 56) then
-			local kind = i % 5
-			local name = ({ "IslandRock", "BeachBush", "TrailFence", "DockLamp", "SupplyCrate" })[kind + 1]
-			local y = kind == 2 and 1.7 or 2.3
-			local size = kind == 0 and Vector3.new(2.2, 1.6, 1.7) or kind == 1 and Vector3.new(2.4, 1.5, 2.2) or kind == 2 and Vector3.new(3.5, 1.3, 0.55) or kind == 3 and Vector3.new(0.7, 4.7, 0.7) or Vector3.new(1.8, 1.8, 1.8)
-			local color = kind == 0 and Color3.fromRGB(124, 129, 123) or kind == 1 and Color3.fromRGB(63, 153, 96) or kind == 2 and Color3.fromRGB(209, 183, 127) or kind == 3 and Color3.fromRGB(235, 217, 132) or Color3.fromRGB(157, 112, 76)
-			local deco = block(name .. i, size, Vector3.new(x, y, z), color, kind == 0 and Enum.Material.Rock or Enum.Material.Wood, root, "IslandDecoration")
-			if kind == 0 or kind == 1 then
-				deco.Shape = Enum.PartType.Ball
-			elseif kind == 3 then
-				local light = Instance.new("PointLight")
-				light.Color = color
-				light.Range = 12
-				light.Brightness = 0.8
-				light.Parent = deco
-			end
-		end
-	end
-	return { Root = root, Bases = root:GetChildren(), Belt = belt }
-end
-
-return WorldBuilder
+return W

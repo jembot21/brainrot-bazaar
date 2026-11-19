@@ -1,126 +1,62 @@
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-local Data = require(ReplicatedStorage.Shared.BrainrotData)
-
-local player = Players.LocalPlayer
-local remotes = ReplicatedStorage:WaitForChild("BrainrotRemotes")
-local gui = Instance.new("ScreenGui")
-gui.Name = "IslandHud"
-gui.ResetOnSpawn = false
-gui.IgnoreGuiInset = false
-gui.Parent = player:WaitForChild("PlayerGui")
-
-local function label(name, size, position, text, color)
-	local item = Instance.new("TextLabel")
-	item.Name = name
-	item.Size = size
-	item.Position = position
-	item.BackgroundColor3 = Color3.fromRGB(23, 39, 52)
-	item.BackgroundTransparency = 0.13
-	item.BorderSizePixel = 0
-	item.Font = Enum.Font.GothamBold
-	item.TextColor3 = color or Color3.new(1, 1, 1)
-	item.TextScaled = true
-	item.Text = text
-	item.Parent = gui
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 12)
-	corner.Parent = item
-	return item
+local Players=game:GetService("Players")
+local ReplicatedStorage=game:GetService("ReplicatedStorage")
+local D=require(ReplicatedStorage.Shared.BrainrotData)
+local player=Players.LocalPlayer
+local network=ReplicatedStorage:WaitForChild("IslandNetwork")
+local event=network:WaitForChild("Event"); local action=network:WaitForChild("Action")
+local gui=Instance.new("ScreenGui"); gui.Name="IslandHUD"; gui.ResetOnSpawn=false; gui.Parent=player:WaitForChild("PlayerGui")
+local function text(name,parent,size,pos,value)
+ local label=Instance.new("TextLabel"); label.Name=name; label.Size=size; label.Position=pos
+ label.BackgroundColor3=Color3.fromRGB(23,36,55); label.BackgroundTransparency=0.12
+ label.TextColor3=Color3.fromRGB(242,249,255); label.Font=Enum.Font.GothamBold
+ label.TextScaled=true; label.TextWrapped=true; label.Text=value; label.Parent=parent
+ local corner=Instance.new("UICorner"); corner.CornerRadius=UDim.new(0,9); corner.Parent=label
+ local padding=Instance.new("UIPadding"); padding.PaddingLeft=UDim.new(0,8); padding.PaddingRight=UDim.new(0,8); padding.Parent=label
+ return label
 end
-
-local cashLabel = label("Cash", UDim2.fromOffset(220, 46), UDim2.fromOffset(18, 18), "Cash: $150", Color3.fromRGB(255, 230, 129))
-local waveLabel = label("Wave", UDim2.new(0.48, 0, 0, 48), UDim2.new(0.26, 0, 0, 18), "CALM", Color3.fromRGB(185, 242, 255))
-local statsLabel = label("Stats", UDim2.fromOffset(220, 40), UDim2.fromOffset(18, 72), "Speed 0/10 · Rebirths 0", Color3.fromRGB(205, 229, 239))
-local toastLabel = label("Toast", UDim2.new(0.5, 0, 0, 48), UDim2.new(0.25, 0, 0.78, 0), "Collect, place, and get to high ground!", Color3.fromRGB(255, 239, 180))
-toastLabel.Visible = true
-
-local function button(name, position, text, color)
-	local item = Instance.new("TextButton")
-	item.Name = name
-	item.Size = UDim2.fromOffset(205, 54)
-	item.Position = position
-	item.BackgroundColor3 = color
-	item.BorderSizePixel = 0
-	item.Font = Enum.Font.GothamBold
-	item.TextColor3 = Color3.new(1, 1, 1)
-	item.TextScaled = true
-	item.Text = text
-	item.Parent = gui
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 12)
-	corner.Parent = item
-	return item
+local function button(name,parent,size,pos,value,callback)
+ local b=Instance.new("TextButton"); b.Name=name; b.Size=size; b.Position=pos; b.Text=value
+ b.BackgroundColor3=Color3.fromRGB(42,114,133); b.TextColor3=Color3.new(1,1,1)
+ b.Font=Enum.Font.GothamBold; b.TextScaled=true; b.TextWrapped=true; b.Parent=parent
+ local corner=Instance.new("UICorner"); corner.Parent=b
+ b.Activated:Connect(callback); return b
 end
-
-local speedButton = button("SpeedShop", UDim2.new(1, -223, 1, -132), "Speed +2", Color3.fromRGB(63, 144, 205))
-local rebirthButton = button("Rebirth", UDim2.new(1, -223, 1, -68), "Rebirth $25,000", Color3.fromRGB(141, 86, 190))
-local state = { Cash = Data.StartCash, Speed = 0, Rebirths = 0 }
-
-local function update()
-	cashLabel.Text = "Cash: $" .. tostring(state.Cash)
-	local nextTier = state.Speed + 1
-	statsLabel.Text = "Speed " .. state.Speed .. "/10 · Rebirths " .. state.Rebirths
-	if state.Speed >= Data.SpeedTiers then
-		speedButton.Text = "MAX SPEED"
-	else
-		speedButton.Text = "+2 Speed · $" .. Data.SpeedCost(nextTier)
-	end
-	rebirthButton.Text = state.Cash >= Data.RebirthCost and "REBIRTH · $25,000" or "Rebirth · $25,000"
+local cash=text("Cash",gui,UDim2.fromScale(0.28,0.075),UDim2.fromScale(0.02,0.02),"$150")
+local banner=text("WaveStatus",gui,UDim2.fromScale(0.6,0.085),UDim2.fromScale(0.35,0.02),"CALM • Preparing island")
+local carry=text("CarryStatus",gui,UDim2.fromScale(0.46,0.06),UDim2.fromScale(0.27,0.91),"Buy → carry → place → earn")
+local toast=text("Toast",gui,UDim2.fromScale(0.7,0.1),UDim2.fromScale(0.15,0.77),""); toast.Visible=false
+local rebirth=button("Rebirth",gui,UDim2.fromScale(0.23,0.09),UDim2.fromScale(0.75,0.88),"Rebirth",function() action:FireServer("Rebirth") end)
+local panel=Instance.new("Frame"); panel.Name="SpeedShop"; panel.Size=UDim2.fromScale(0.37,0.65); panel.Position=UDim2.fromScale(0.02,0.19); panel.BackgroundColor3=Color3.fromRGB(23,36,55); panel.Visible=false; panel.Parent=gui
+text("Title",panel,UDim2.fromScale(1,0.09),UDim2.fromScale(0,0),"SPEED SHOP • 10 tiers")
+local rows={}
+for tier=1,D.SpeedTiers do
+ rows[tier]=button("Tier"..tier,panel,UDim2.fromScale(0.94,0.077),UDim2.fromScale(0.03,0.11+(tier-1)*0.085),"",function()
+  if (player:GetAttribute("SpeedTier") or 0)+1==tier then action:FireServer("Speed") end
+ end)
 end
-
-speedButton.Activated:Connect(function()
-	remotes.BuySpeed:FireServer()
+button("ToggleSpeed",gui,UDim2.fromScale(0.23,0.065),UDim2.fromScale(0.02,0.11),"Speed Shop",function() panel.Visible=not panel.Visible end)
+local function refresh()
+ local speed=player:GetAttribute("SpeedTier") or 0
+ local count=player:GetAttribute("Rebirths") or 0
+ cash.Text="$"..(player:GetAttribute("Cash") or 150).." • $"..string.format("%.1f",player:GetAttribute("IncomePerSecond") or 0).."/s"
+ rebirth.Text="Rebirth $25,000\n"..count.." rebirths • "..(1+count*0.5).."× income"
+ local carrying=player:GetAttribute("Carrying")
+ carry.Text=carrying and carrying~="" and "Carrying: "..carrying.." • Bring to your pad!" or "3 matching species → fuse at Fusion Corner"
+ for tier,b in ipairs(rows) do
+  b.Text=(tier<=speed and "OWNED • " or tier==speed+1 and "BUY • " or "LOCKED • ").."Tier "..tier.." / Speed "..(16+tier*2).." / $"..D.SpeedCost(tier)
+  b.BackgroundColor3=tier==speed+1 and Color3.fromRGB(38,148,151) or Color3.fromRGB(57,68,86)
+  b.Active=tier==speed+1; b.AutoButtonColor=tier==speed+1
+ end
+end
+player.AttributeChanged:Connect(refresh)
+local toastId=0
+event.OnClientEvent:Connect(function(kind,data)
+ if kind=="Wave" then
+  banner.Text=data.Phase.." • "..data.Remaining.."s • "..data.Height.." stud wave\n"..(data.Phase=="CALM" and "Collect now. Your own base is safe." or "Return home or climb the high platforms!")
+  banner.BackgroundColor3=data.Phase=="CALM" and Color3.fromRGB(24,93,106) or Color3.fromRGB(164,60,61)
+ elseif kind=="Toast" or kind=="Warning" then
+  toastId+=1; local id=toastId; toast.Text=data; toast.Visible=true
+  task.delay(5,function() if toastId==id then toast.Visible=false end end)
+ end
 end)
-rebirthButton.Activated:Connect(function()
-	remotes.Rebirth:FireServer()
-end)
-
-remotes.CashChanged.OnClientEvent:Connect(function(cash, rebirths, speed)
-	state.Cash = cash
-	state.Rebirths = rebirths
-	state.Speed = speed
-	update()
-end)
-
-local toastToken = 0
-remotes.Toast.OnClientEvent:Connect(function(message)
-	toastToken += 1
-	local token = toastToken
-	toastLabel.Text = tostring(message)
-	toastLabel.Visible = true
-	task.delay(3.5, function()
-		if token == toastToken then toastLabel.Visible = false end
-	end)
-end)
-
-local wavePhase = "CALM"
-local waveEnd = 0
-local waveHeight = 6
-remotes.WaveStatus.OnClientEvent:Connect(function(phase, duration, height)
-	wavePhase = phase
-	waveEnd = os.clock() + duration
-	waveHeight = height
-	if phase == "WARNING" then
-		waveLabel.Text = "TSUNAMI WARNING! GET TO HIGH GROUND"
-		waveLabel.BackgroundColor3 = Color3.fromRGB(186, 65, 71)
-	elseif phase == "SWEEP" then
-		waveLabel.BackgroundColor3 = Color3.fromRGB(31, 112, 157)
-	else
-		waveLabel.BackgroundColor3 = Color3.fromRGB(23, 39, 52)
-	end
-end)
-
-RunService.RenderStepped:Connect(function()
-	local remaining = math.max(0, math.ceil(waveEnd - os.clock()))
-	if wavePhase == "WARNING" then
-		waveLabel.Text = "TSUNAMI WARNING · " .. remaining .. "s · HIGH GROUND!"
-	elseif wavePhase == "SWEEP" then
-		waveLabel.Text = "WAVE SWEEP · " .. remaining .. "s · " .. waveHeight .. " STUDS"
-	else
-		waveLabel.Text = "CALM · NEXT WAVE IN " .. remaining .. "s"
-	end
-end)
-
-update()
+refresh(); action:FireServer("Sync")

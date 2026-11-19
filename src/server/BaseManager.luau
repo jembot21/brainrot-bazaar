@@ -1,305 +1,139 @@
-local Players = game:GetService("Players")
-local Data = require(game:GetService("ReplicatedStorage").Shared.BrainrotData)
-local CharacterFactory = require(script.Parent.CharacterFactory)
-
-local BaseManager = {}
-local plots = {}
-local playerPlots = {}
-local carried = {}
-local economy
-local remotes
-
-local function toast(player, message)
-	if remotes and remotes.Toast then
-		remotes.Toast:FireClient(player, message)
-	end
+local Players=game:GetService("Players")
+local D=require(game.ReplicatedStorage.Shared.BrainrotData)
+local Factory=require(script.Parent.CharacterFactory)
+local B={Assignments={},Carried={}}
+local world,economy,remote
+local function toast(p,message) remote:FireClient(p,"Toast",message) end
+local function aliveNear(p,part)
+ local c=p.Character; local root=c and c:FindFirstChild("HumanoidRootPart")
+ local h=c and c:FindFirstChildOfClass("Humanoid")
+ return root and h and h.Health>0 and (root.Position-part.Position).Magnitude<=14
 end
-
-local function getPadBrainrot(pad)
-	for _, child in ipairs(pad:GetChildren()) do
-		if child:IsA("Model") and child:GetAttribute("Species") then
-			return child
-		end
-	end
-	return nil
+local function prompt(part,text,callback)
+ local p=Instance.new("ProximityPrompt"); p.ActionText=text; p.ObjectText=part.Name
+ p.HoldDuration=0.4; p.MaxActivationDistance=11; p.RequiresLineOfSight=false; p.Parent=part
+ p.Triggered:Connect(function(player) if aliveNear(player,part) then callback(player) end end)
+ return p
 end
-
-local function padList(plot)
-	local pads = {}
-	for _, descendant in ipairs(plot.Model:GetDescendants()) do
-		if descendant:IsA("BasePart") and descendant:GetAttribute("PadIndex") then
-			table.insert(pads, descendant)
-		end
-	end
-	table.sort(pads, function(a, b)
-		return a:GetAttribute("PadIndex") < b:GetAttribute("PadIndex")
-	end)
-	return pads
+function B.GetPlaced(player)
+ local result={}; local plot=B.Assignments[player]
+ if plot then for _,slot in pairs(plot.Slots) do table.insert(result,slot.Item) end end
+ return result
 end
-
-local function setAnchored(model, anchored)
-	for _, descendant in ipairs(model:GetDescendants()) do
-		if descendant:IsA("BasePart") then
-			descendant.Anchored = anchored
-			descendant.CanCollide = false
-		end
-	end
+function B.IsHome(player,position)
+ local plot=B.Assignments[player]
+ return plot~=nil and math.abs(position.X-plot.Center.X)<=27 and math.abs(position.Z-plot.Center.Z)<=24
 end
-
-local function attachCarry(player, model)
-	local character = player.Character
-	local head = character and character:FindFirstChild("Head")
-	local primary = model.PrimaryPart
-	if not head or not primary then
-		model.Parent = workspace:FindFirstChild("BrainrotIsland")
-		model:PivotTo(player.Character and player.Character:GetPivot() or CFrame.new())
-		return false
-	end
-	local oldPrompt = model:FindFirstChild("PickupPrompt", true)
-	if oldPrompt then oldPrompt:Destroy() end
-	model.Parent = character
-	setAnchored(model, false)
-	for _, child in ipairs(model:GetChildren()) do
-		if child:IsA("BasePart") and child ~= primary then
-			local weld = Instance.new("WeldConstraint")
-			weld.Part0 = primary
-			weld.Part1 = child
-			weld.Parent = primary
-		end
-	end
-	primary.CFrame = head.CFrame * CFrame.new(0, 2.15, 0)
-	local weld = Instance.new("WeldConstraint")
-	weld.Name = "CarryWeld"
-	weld.Part0 = head
-	weld.Part1 = primary
-	weld.Parent = primary
-	model:SetAttribute("CarriedBy", player.UserId)
-	carried[player] = model
-	return true
+function B.Drop(player)
+ local carried=B.Carried[player]
+ if carried then carried.Model:Destroy(); B.Carried[player]=nil end
+ player:SetAttribute("Carrying","")
 end
-
-local function place(player, pad)
-	local plot = playerPlots[player]
-	local item = carried[player]
-	if not plot or not item then
-		return false
-	end
-	local speciesName = item:GetAttribute("Species")
-	if pad:GetAttribute("PlotIndex") ~= plot.Index or pad:GetAttribute("Occupied") then
-		return false
-	end
-	local primary = item.PrimaryPart
-	if not primary then return false end
-	for _, descendant in ipairs(item:GetDescendants()) do
-		if descendant:IsA("WeldConstraint") then descendant:Destroy() end
-	end
-	item.Parent = pad
-	setAnchored(item, true)
-	item:PivotTo(pad.CFrame * CFrame.new(0, 1.15, 0))
-	item:SetAttribute("CarriedBy", nil)
-	item:SetAttribute("OwnerUserId", player.UserId)
-	pad:SetAttribute("Occupied", true)
-	pad:SetAttribute("LockedUntil", os.clock() + Data.PadLockSeconds)
-	carried[player] = nil
-	if remotes and remotes.PurchaseSparkle then remotes.PurchaseSparkle:FireAllClients(item:GetPivot().Position) end
-	local fused = BaseManager.TryFusion(player)
-	if not fused then
-		local matching = 0
-		for _, placed in ipairs(BaseManager.GetPlaced(player)) do
-			if placed:GetAttribute("Species") == speciesName then matching += 1 end
-		end
-		if matching == 2 then toast(player, "Fusion hint: place one more " .. speciesName .. " on your pads!") end
-	end
-	return true
+function B.Give(player,item)
+ if B.Carried[player] or not B.Assignments[player] then return false end
+ local char=player.Character; local head=char and char:FindFirstChild("Head")
+ local hum=char and char:FindFirstChildOfClass("Humanoid")
+ if not head or not hum or hum.Health<=0 then return false end
+ local model=Factory.Create(item); model.Parent=world.Folder
+ model:PivotTo(head.CFrame*CFrame.new(0,3.5,0))
+ for _,p in ipairs(model:GetDescendants()) do
+  if p:IsA("BasePart") then
+   p.Anchored=false; p.Massless=true
+   local weld=Instance.new("WeldConstraint"); weld.Part0=head; weld.Part1=p; weld.Parent=p
+  end
+ end
+ B.Carried[player]={Item=item,Model=model}
+ player:SetAttribute("Carrying",D.Species[item.Species].Name)
+ return true
 end
-
-local function take(player, pad)
-	local model = getPadBrainrot(pad)
-	if not model or carried[player] then return false end
-	local ownerId = model:GetAttribute("OwnerUserId")
-	local isOwner = ownerId == player.UserId
-	local unlocked = os.clock() >= (pad:GetAttribute("LockedUntil") or 0)
-	if not isOwner and not unlocked then
-		toast(player, "That brainrot is locked for a little longer!")
-		return false
-	end
-	pad:SetAttribute("Occupied", false)
-	model.Parent = workspace
-	return attachCarry(player, model)
+local function place(plot,index,item)
+ local pad=plot.Pads[index]
+ local model=Factory.Create(item); model.Parent=world.Folder
+ model:PivotTo(CFrame.new(pad.Position+Vector3.new(0,2,0)))
+ local slot={Item=item,Model=model,Unlock=os.clock()+D.PadLock}
+ plot.Slots[index]=slot
+ pad.Color=Color3.fromRGB(244,135,103)
+ task.delay(D.PadLock,function()
+  if plot.Slots[index]==slot then pad.Color=Color3.fromRGB(113,236,158) end
+ end)
 end
-
-local function makePadPrompt(pad)
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "PadPrompt"
-	prompt.ActionText = "Place / Take"
-	prompt.ObjectText = "Brainrot Pad"
-	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.HoldDuration = 0.2
-	prompt.MaxActivationDistance = 11
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = pad
-	prompt.Triggered:Connect(function(player)
-		if carried[player] then
-			place(player, pad)
-		else
-			take(player, pad)
-		end
-	end)
+function B.Fuse(player)
+ local plot=B.Assignments[player]; if not plot then return end
+ local groups={}
+ for index,slot in pairs(plot.Slots) do
+  local id=slot.Item.Species; groups[id]=groups[id] or {}; table.insert(groups[id],index)
+ end
+ for id,indices in pairs(groups) do
+  local tier=D.Species[id].Tier
+  if #indices>=D.FusionCount and tier<#D.Tiers then
+   local nextId
+   for i,s in ipairs(D.Species) do if s.Tier==tier+1 then nextId=i; break end end
+   for i=1,D.FusionCount do local index=indices[i]; plot.Slots[index].Model:Destroy(); plot.Slots[index]=nil end
+   place(plot,indices[1],{Species=nextId,Mutation="Normal"})
+   toast(player,"Fusion! Three duplicates became "..D.Species[nextId].Name..".")
+   remote:FireClient(player,"Purchase"); return
+  end
+ end
+ toast(player,"Place 3 of the same species on your pads. Mythics are already the highest tier.")
 end
-
 local function assign(player)
-	for _, plot in ipairs(plots) do
-		if not plot.Owner then
-			plot.Owner = player
-			plot.Model:SetAttribute("OwnerUserId", player.UserId)
-			playerPlots[player] = plot
-			local spawn = plot.Spawn
-			local function placeCharacter(character)
-				local root = character:WaitForChild("HumanoidRootPart", 8)
-				if root and playerPlots[player] == plot then
-					root.CFrame = spawn.CFrame + Vector3.new(0, 4, 0)
-					local humanoid = character:FindFirstChildOfClass("Humanoid")
-					if humanoid then
-						local state = economy.GetState(player)
-						humanoid.WalkSpeed = 16 + ((state and state.SpeedTier or 0) * Data.SpeedPerTier)
-					end
-				end
-			end
-			player.CharacterAdded:Connect(placeCharacter)
-			if player.Character then task.spawn(placeCharacter, player.Character) end
-			return plot
-		end
-	end
-	toast(player, "All island plots are full.")
-	return nil
+ if B.Assignments[player] then return end
+ for _,plot in ipairs(world.Plots) do
+  if not plot.Owner then
+   plot.Owner=player; B.Assignments[player]=plot
+   player:SetAttribute("Plot",plot.Index)
+   plot.Floor:SetAttribute("Owner",player.Name)
+   local function spawned(char)
+    B.Drop(player)
+    local root=char:WaitForChild("HumanoidRootPart",10)
+    if root and B.Assignments[player]==plot then char:PivotTo(CFrame.new(plot.Center+Vector3.new(0,5,0))) end
+    local h=char:FindFirstChildOfClass("Humanoid")
+    if h then h.Died:Connect(function() B.Drop(player) end) end
+   end
+   player.CharacterAdded:Connect(spawned)
+   if player.Character then task.spawn(spawned,player.Character) end
+   return
+  end
+ end
+ toast(player,"All eight plots are occupied. A plot will be assigned when one opens.")
 end
-
-function BaseManager.Start(world, economyService, remoteFolder)
-	economy = economyService
-	remotes = remoteFolder
-	plots = {}
-	for _, child in ipairs(world.Root:GetChildren()) do
-		if child:IsA("Model") and child:GetAttribute("PlotIndex") then
-			local spawn = child:FindFirstChild("PlotSpawn")
-			local floor = child:FindFirstChild("BaseFloor")
-			table.insert(plots, {
-				Index = child:GetAttribute("PlotIndex"),
-				Model = child,
-				Center = floor and floor.Position or child:GetPivot().Position,
-				Spawn = spawn,
-			})
-		end
-	end
-	table.sort(plots, function(a, b) return a.Index < b.Index end)
-	for _, plot in ipairs(plots) do
-		for _, pad in ipairs(padList(plot)) do makePadPrompt(pad) end
-	end
-	Players.PlayerAdded:Connect(assign)
-	Players.PlayerRemoving:Connect(function(player)
-		local plot = playerPlots[player]
-		if plot then
-			plot.Owner = nil
-			plot.Model:SetAttribute("OwnerUserId", nil)
-			for _, pad in ipairs(padList(plot)) do
-				local model = getPadBrainrot(pad)
-				if model then model:Destroy() end
-				pad:SetAttribute("Occupied", false)
-			end
-		end
-		if carried[player] then carried[player]:Destroy() end
-		carried[player] = nil
-		playerPlots[player] = nil
-	end)
-	for _, player in ipairs(Players:GetPlayers()) do
-		assign(player)
-	end
-	for _, stand in ipairs(world.Root:GetChildren()) do
-		if stand:IsA("BasePart") and stand:GetAttribute("ShopType") == "Sell" then
-			local prompt = Instance.new("ProximityPrompt")
-			prompt.ActionText = "Sell Carried Brainrot"
-			prompt.ObjectText = "Trade Stand"
-			prompt.KeyboardKeyCode = Enum.KeyCode.E
-			prompt.MaxActivationDistance = 12
-			prompt.Parent = stand
-			prompt.Triggered:Connect(function(player) BaseManager.SellCarry(player) end)
-		end
-	end
+function B.Start(w,e,r)
+ world=w; economy=e; remote=r
+ for _,plot in ipairs(world.Plots) do
+  plot.Slots={}
+  for index,pad in ipairs(plot.Pads) do
+   prompt(pad,"Place / pick up / steal",function(player)
+    local slot=plot.Slots[index]
+    if slot then
+     if B.Carried[player] then toast(player,"Your hands are full."); return end
+     if player~=plot.Owner and os.clock()<slot.Unlock then toast(player,"Locked for "..math.ceil(slot.Unlock-os.clock()).." seconds."); return end
+     if B.Give(player,slot.Item) then slot.Model:Destroy(); plot.Slots[index]=nil; pad.Color=Color3.fromRGB(237,207,112) end
+    elseif player==plot.Owner and B.Carried[player] then
+     local item=B.Carried[player].Item; B.Drop(player); place(plot,index,item)
+     toast(player,"Placed! Protected from stealing for 60 seconds.")
+    elseif player==plot.Owner then toast(player,"Buy a creature at the belt, then bring it here.") end
+   end)
+  end
+ end
+ prompt(world.FusionStand,"Fuse duplicates",B.Fuse)
+ prompt(world.SellStand,"Sell carried for 90%",function(player)
+  local carry=B.Carried[player]
+  if carry then economy.Sell(player,carry.Item); B.Drop(player); remote:FireClient(player,"Purchase") end
+ end)
+ prompt(world.SpeedStand,"Buy next speed tier",function(player)
+  toast(player,economy.BuySpeed(player) and "Speed upgraded!" or "Need more cash, or speed is maxed.")
+ end)
+ Players.PlayerAdded:Connect(assign)
+ Players.PlayerRemoving:Connect(function(player)
+  B.Drop(player); local plot=B.Assignments[player]
+  if plot then
+   for _,slot in pairs(plot.Slots) do slot.Model:Destroy() end
+   plot.Slots={}; plot.Owner=nil; plot.Floor:SetAttribute("Owner",nil)
+   for _,pad in ipairs(plot.Pads) do pad.Color=Color3.fromRGB(237,207,112) end
+   B.Assignments[player]=nil
+   task.defer(function() for _,waiting in ipairs(Players:GetPlayers()) do if waiting~=player then assign(waiting) end end end)
+  end
+ end)
+ for _,player in ipairs(Players:GetPlayers()) do assign(player) end
 end
-
-function BaseManager.GetPlaced(player)
-	local plot = playerPlots[player]
-	local result = {}
-	if not plot then return result end
-	for _, pad in ipairs(padList(plot)) do
-		local model = getPadBrainrot(pad)
-		if model then table.insert(result, model) end
-	end
-	return result
-end
-
-function BaseManager.GiveCarry(player, model)
-	if carried[player] or not playerPlots[player] then return false end
-	return attachCarry(player, model)
-end
-
-function BaseManager.ClearCarry(player)
-	local model = carried[player]
-	if model then model:Destroy() end
-	carried[player] = nil
-end
-
-function BaseManager.SellCarry(player)
-	local model = carried[player]
-	if not model then toast(player, "Carry a brainrot to the trade stand first."); return false end
-	local value = economy.SellValue(model:GetAttribute("Price") or 0)
-	BaseManager.ClearCarry(player)
-	economy.AddCash(player, value)
-	toast(player, "Sold for $" .. value .. "!")
-	return true
-end
-
-function BaseManager.TryFusion(player)
-	local plot = playerPlots[player]
-	if not plot then return false end
-	local groups = {}
-	for _, pad in ipairs(padList(plot)) do
-		local model = getPadBrainrot(pad)
-		if model then
-			local name = model:GetAttribute("Species")
-			groups[name] = groups[name] or {}
-			table.insert(groups[name], { Pad = pad, Model = model })
-		end
-	end
-	for speciesName, group in pairs(groups) do
-		if #group >= Data.FusionCount then
-			local oldSpecies = Data.SpeciesByName[speciesName]
-			local nextTier = math.min(oldSpecies.Tier + 1, #Data.TierPrice)
-			if nextTier == oldSpecies.Tier then return false end
-			local choices = {}
-			for _, species in ipairs(Data.Species) do
-				if species.Tier == nextTier then table.insert(choices, species) end
-			end
-			if #choices == 0 then return false end
-			for i = 1, Data.FusionCount do group[i].Model:Destroy(); group[i].Pad:SetAttribute("Occupied", false) end
-			local target = group[1].Pad
-			local fused = CharacterFactory.Create(choices[math.random(1, #choices)].Name, "Normal")
-			fused.Parent = target
-			fused:PivotTo(target.CFrame * CFrame.new(0, 1.15, 0))
-			fused:SetAttribute("OwnerUserId", player.UserId)
-			target:SetAttribute("Occupied", true)
-			target:SetAttribute("LockedUntil", os.clock() + Data.PadLockSeconds)
-			toast(player, "Fusion! Three " .. speciesName .. " became " .. fused:GetAttribute("Species") .. ".")
-			return true
-		end
-	end
-	return false
-end
-
-function BaseManager.IsInOwnBase(player, position)
-	local plot = playerPlots[player]
-	if not plot then return false end
-	local center = plot.Center
-	return math.abs(position.X - center.X) <= 26 and math.abs(position.Z - center.Z) <= 23
-end
-
-return BaseManager
+return B

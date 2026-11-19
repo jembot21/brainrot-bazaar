@@ -1,169 +1,69 @@
-local Players = game:GetService("Players")
-local Data = require(game:GetService("ReplicatedStorage").Shared.BrainrotData)
-
-local Economy = {}
-local states = {}
-local remotes
-local getPlaced = function()
-	return {}
+local Players=game:GetService("Players")
+local D=require(game.ReplicatedStorage.Shared.BrainrotData)
+local E={States={}}
+function E.Sync(player)
+ local s=E.States[player]; if not s then return end
+ s.CashStat.Value=math.floor(s.Cash)
+ player:SetAttribute("Cash",math.floor(s.Cash))
+ player:SetAttribute("SpeedTier",s.Speed)
+ player:SetAttribute("Rebirths",s.Rebirths)
+ player:SetAttribute("IncomeMultiplier",1+s.Rebirths*D.RebirthBonus)
 end
-
-local function publish(player)
-	local state = states[player]
-	if not state then
-		return
-	end
-	local leaderstats = player:FindFirstChild("leaderstats")
-	if leaderstats then
-		leaderstats.Cash.Value = math.floor(state.Cash)
-		leaderstats.Rebirths.Value = state.Rebirths
-	end
-	player:SetAttribute("Cash", math.floor(state.Cash))
-	player:SetAttribute("SpeedTier", state.SpeedTier)
-	player:SetAttribute("Rebirths", state.Rebirths)
-	if remotes and remotes.CashChanged then
-		remotes.CashChanged:FireClient(player, math.floor(state.Cash), state.Rebirths, state.SpeedTier)
-	end
+function E.AddPlayer(player)
+ if E.States[player] then return end
+ local stats=Instance.new("Folder"); stats.Name="leaderstats"; stats.Parent=player
+ local cash=Instance.new("IntValue"); cash.Name="Cash"; cash.Parent=stats
+ E.States[player]={Cash=D.StartCash,Speed=0,Rebirths=0,CashStat=cash}
+ E.Sync(player)
+ player.CharacterAdded:Connect(function(character)
+  local humanoid=character:WaitForChild("Humanoid",10)
+  local state=E.States[player]
+  if humanoid and state then humanoid.WalkSpeed=16+state.Speed*D.SpeedStep end
+ end)
 end
-
-local function addPlayer(player)
-	local stats = Instance.new("Folder")
-	stats.Name = "leaderstats"
-	stats.Parent = player
-	local cash = Instance.new("IntValue")
-	cash.Name = "Cash"
-	cash.Value = Data.StartCash
-	cash.Parent = stats
-	local rebirths = Instance.new("IntValue")
-	rebirths.Name = "Rebirths"
-	rebirths.Value = 0
-	rebirths.Parent = stats
-	states[player] = { Cash = Data.StartCash, Rebirths = 0, SpeedTier = 0 }
-	publish(player)
+function E.Credit(player,amount)
+ local s=E.States[player]
+ if not s or amount~=amount or amount<0 or amount==math.huge then return false end
+ s.Cash+=amount; E.Sync(player); return true
 end
-
-function Economy.Start(remoteFolder, placedProvider)
-	remotes = remoteFolder
-	getPlaced = placedProvider or getPlaced
-	Players.PlayerAdded:Connect(addPlayer)
-	Players.PlayerRemoving:Connect(function(player)
-		states[player] = nil
-	end)
-	for _, player in ipairs(Players:GetPlayers()) do
-		if not states[player] then
-			addPlayer(player)
-		end
-	end
-	if remotes.BuySpeed then
-		remotes.BuySpeed.OnServerEvent:Connect(function(player)
-			Economy.BuySpeed(player)
-		end)
-	end
-	if remotes.Rebirth then
-		remotes.Rebirth.OnServerEvent:Connect(function(player)
-			Economy.Rebirth(player)
-		end)
-	end
-	task.spawn(function()
-		while true do
-			task.wait(1)
-			for player, state in pairs(states) do
-				if player.Parent == Players then
-					local baseIncome = 0
-					for _, brainrot in ipairs(getPlaced(player)) do
-						if brainrot and brainrot.Parent then
-							baseIncome += brainrot:GetAttribute("Income") or 0
-						end
-					end
-					state.Cash += baseIncome * Data.IncomeMultiplier(state.Rebirths)
-					publish(player)
-				end
-			end
-		end
-	end)
+function E.Spend(player,amount)
+ local s=E.States[player]
+ if not s or amount~=amount or amount<0 or amount==math.huge or s.Cash<amount then return false end
+ s.Cash-=amount; E.Sync(player); return true
 end
-
-function Economy.GetCash(player)
-	local state = states[player]
-	return state and math.floor(state.Cash) or 0
+function E.Penalize(player)
+ local s=E.States[player]; if s then E.Spend(player,s.Cash*D.CaughtPenalty) end
 end
-
-function Economy.GetState(player)
-	return states[player]
+function E.Sell(player,item) return E.Credit(player,D.Price(item)*D.SellRatio) end
+function E.BuySpeed(player)
+ local s=E.States[player]
+ if not s or s.Speed>=D.SpeedTiers then return false end
+ if not E.Spend(player,D.SpeedCost(s.Speed+1)) then return false end
+ s.Speed+=1
+ local h=player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+ if h then h.WalkSpeed=16+s.Speed*D.SpeedStep end
+ E.Sync(player); return true
 end
-
-function Economy.AddCash(player, amount)
-	local state = states[player]
-	if not state then
-		return false
-	end
-	state.Cash = math.max(0, state.Cash + amount)
-	publish(player)
-	return true
+function E.Rebirth(player)
+ local s=E.States[player]
+ if not s or not E.Spend(player,D.RebirthCost) then return false end
+ s.Rebirths+=1; E.Sync(player); return true
 end
-
-function Economy.TrySpend(player, amount)
-	local state = states[player]
-	if not state or amount < 0 or state.Cash < amount then
-		return false
-	end
-	state.Cash -= amount
-	publish(player)
-	return true
+function E.Start(base)
+ Players.PlayerAdded:Connect(E.AddPlayer)
+ Players.PlayerRemoving:Connect(function(player) E.States[player]=nil end)
+ for _,player in ipairs(Players:GetPlayers()) do E.AddPlayer(player) end
+ task.spawn(function()
+  while true do
+   task.wait(1)
+   for player,s in pairs(E.States) do
+    local income=0
+    for _,item in ipairs(base.GetPlaced(player)) do income+=D.Income(item) end
+    income*=1+s.Rebirths*D.RebirthBonus
+    player:SetAttribute("IncomePerSecond",income)
+    if income>0 then E.Credit(player,income) end
+   end
+  end
+ end)
 end
-
-function Economy.BuySpeed(player)
-	local state = states[player]
-	if not state or state.SpeedTier >= Data.SpeedTiers then
-		return false
-	end
-	local tier = state.SpeedTier + 1
-	local cost = Data.SpeedCost(tier)
-	if not Economy.TrySpend(player, cost) then
-		if remotes.Toast then remotes.Toast:FireClient(player, "Need $" .. cost .. " for the next speed tier.") end
-		return false
-	end
-	state.SpeedTier = tier
-	local character = player.Character
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	if humanoid then
-		humanoid.WalkSpeed = 16 + tier * Data.SpeedPerTier
-	end
-	publish(player)
-	if remotes.Toast then remotes.Toast:FireClient(player, "Speed upgraded to tier " .. tier .. "!") end
-	return true
-end
-
-function Economy.Rebirth(player)
-	local state = states[player]
-	if not state then
-		return false
-	end
-	if not Economy.TrySpend(player, Data.RebirthCost) then
-		if remotes.Toast then remotes.Toast:FireClient(player, "Rebirth costs $" .. Data.RebirthCost .. ".") end
-		return false
-	end
-	state.Rebirths += 1
-	state.SpeedTier = 0
-	local character = player.Character
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	if humanoid then humanoid.WalkSpeed = 16 end
-	publish(player)
-	if remotes.Toast then remotes.Toast:FireClient(player, "Rebirth complete! Income multiplier increased.") end
-	return true
-end
-
-function Economy.SellValue(price)
-	return math.floor(price * Data.SellMultiplier + 0.5)
-end
-
-function Economy.ApplyCaughtPenalty(player)
-	local state = states[player]
-	if not state then return end
-	local loss = math.floor(state.Cash * Data.CaughtCashLoss + 0.5)
-	state.Cash = math.max(0, state.Cash - loss)
-	publish(player)
-	if remotes.Caught then remotes.Caught:FireClient(player, loss) end
-end
-
-return Economy
+return E

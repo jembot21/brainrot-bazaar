@@ -2,18 +2,8 @@
   "name": "Brainrot Tsunami Escape",
   "tree": {
     "$className": "DataModel",
-    "ReplicatedStorage": {
-      "Shared": {
-        "$path": "src/shared"
-      }
-    },
-    "ServerScriptService": {
-      "$path": "src/server"
-    },
-    "StarterPlayer": {
-      "StarterPlayerScripts": {
-        "$path": "src/client"
-      }
-    }
+    "ReplicatedStorage": { "Shared": { "$path": "src/shared" } },
+    "ServerScriptService": { "Server": { "$path": "src/server" } },
+    "StarterPlayer": { "StarterPlayerScripts": { "$path": "src/client" } }
   }
 }

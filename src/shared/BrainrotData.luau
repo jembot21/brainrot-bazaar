@@ -1,68 +1,61 @@
-local Data = {}
-
-Data.RarityOrder = { "Common", "Rare", "Epic", "Legendary", "Mythic" }
-Data.RarityWeights = { Common = 52, Rare = 27, Epic = 13, Legendary = 6, Mythic = 2 }
-Data.TierPrice = { 25, 90, 300, 1200, 6000 }
-Data.TierIncome = { 2, 8, 28, 110, 520 }
-Data.StartCash = 150
-Data.SellMultiplier = 0.9
-Data.PadLockSeconds = 60
-Data.FusionCount = 3
-Data.SpeedTiers = 10
-Data.SpeedPerTier = 2
-Data.RebirthCost = 25000
-Data.RebirthIncomeBonus = 0.5
-Data.WavePhases = { Calm = 40, Warning = 10, Sweep = 9 }
-Data.WaveHeights = { 6, 10, 14, 18 }
-Data.CaughtCashLoss = 0.05
-
-Data.Mutations = {
-	{ Name = "Normal", Income = 1, Chance = 0.873, Color = Color3.fromRGB(240, 231, 201) },
-	{ Name = "Gold", Income = 2, Chance = 0.08, Color = Color3.fromRGB(255, 198, 45) },
-	{ Name = "Diamond", Income = 3, Chance = 0.035, Color = Color3.fromRGB(64, 219, 255) },
-	{ Name = "Rainbow", Income = 5, Chance = 0.012, Color = Color3.fromRGB(255, 107, 216) },
+local D = {}
+D.Tiers = {
+ {Name="Common", Weight=52, Price=25, Income=2},
+ {Name="Rare", Weight=27, Price=90, Income=8},
+ {Name="Epic", Weight=13, Price=300, Income=28},
+ {Name="Legendary", Weight=6, Price=1200, Income=110},
+ {Name="Mythic", Weight=2, Price=6000, Income=520},
 }
-
-Data.Species = {
-	{ Name = "Bloopaloop", Tier = 1, Body = Color3.fromRGB(79, 199, 166), Accent = Color3.fromRGB(255, 223, 117), Accessory = "Ears" },
-	{ Name = "Muffin Mantis", Tier = 1, Body = Color3.fromRGB(162, 215, 120), Accent = Color3.fromRGB(240, 137, 115), Accessory = "Antennae" },
-	{ Name = "Gloop Trooper", Tier = 1, Body = Color3.fromRGB(113, 157, 226), Accent = Color3.fromRGB(255, 190, 118), Accessory = "Tail" },
-	{ Name = "Wobble Goblet", Tier = 2, Body = Color3.fromRGB(207, 111, 181), Accent = Color3.fromRGB(255, 225, 134), Accessory = "Crown" },
-	{ Name = "Pickle Pogo", Tier = 2, Body = Color3.fromRGB(102, 191, 92), Accent = Color3.fromRGB(240, 151, 76), Accessory = "Ears" },
-	{ Name = "Noodle Comet", Tier = 2, Body = Color3.fromRGB(244, 150, 83), Accent = Color3.fromRGB(255, 232, 138), Accessory = "Tail" },
-	{ Name = "Captain Crumb", Tier = 3, Body = Color3.fromRGB(112, 110, 206), Accent = Color3.fromRGB(255, 208, 89), Accessory = "Hat" },
-	{ Name = "Bumble Biscuit", Tier = 3, Body = Color3.fromRGB(245, 181, 72), Accent = Color3.fromRGB(89, 62, 49), Accessory = "Wings" },
-	{ Name = "Yoyo Yeti", Tier = 5, Body = Color3.fromRGB(158, 223, 235), Accent = Color3.fromRGB(126, 110, 216), Accessory = "Ears" },
-	{ Name = "Professor Puddle", Tier = 4, Body = Color3.fromRGB(79, 174, 185), Accent = Color3.fromRGB(255, 223, 133), Accessory = "Glasses" },
-	{ Name = "Duke Dandelion", Tier = 4, Body = Color3.fromRGB(225, 184, 83), Accent = Color3.fromRGB(107, 184, 112), Accessory = "Crown" },
-	{ Name = "Moonbean Supreme", Tier = 5, Body = Color3.fromRGB(135, 109, 219), Accent = Color3.fromRGB(255, 241, 163), Accessory = "Halo" },
+D.Species = {
+ {Name="Wobble Noodle", Tier=1, Color=Color3.fromRGB(245,156,94), Accessory="Hat"},
+ {Name="Bongo Sprout", Tier=1, Color=Color3.fromRGB(127,211,108), Accessory="Ears"},
+ {Name="Puddle Biscuit", Tier=1, Color=Color3.fromRGB(124,198,233), Accessory="Tail"},
+ {Name="Zippy Turnip", Tier=2, Color=Color3.fromRGB(202,143,237), Accessory="Crown"},
+ {Name="Muffin Gobbler", Tier=2, Color=Color3.fromRGB(235,142,174), Accessory="Hat"},
+ {Name="Dizzy Picklepuff", Tier=2, Color=Color3.fromRGB(152,222,148), Accessory="Ears"},
+ {Name="Orbit Dumpling", Tier=3, Color=Color3.fromRGB(96,132,233), Accessory="Orbit"},
+ {Name="Snorkel Waffle", Tier=3, Color=Color3.fromRGB(238,190,86), Accessory="Goggles"},
+ {Name="Velvet Bonk", Tier=4, Color=Color3.fromRGB(164,89,209), Accessory="Crown"},
+ {Name="Turbo Crumpet", Tier=4, Color=Color3.fromRGB(238,99,89), Accessory="Wings"},
+ {Name="Cosmic Flapjack", Tier=5, Color=Color3.fromRGB(89,231,215), Accessory="Orbit"},
+ {Name="Royal Sploosh", Tier=5, Color=Color3.fromRGB(245,122,221), Accessory="Wings"},
 }
-
-Data.SpeciesByName = {}
-for _, species in ipairs(Data.Species) do
-	species.Price = Data.TierPrice[species.Tier]
-	species.Income = Data.TierIncome[species.Tier]
-	Data.SpeciesByName[species.Name] = species
+D.Mutations = {
+ Normal={Multiplier=1},
+ Gold={Multiplier=2, Chance=0.08, Color=Color3.fromRGB(255,206,62)},
+ Diamond={Multiplier=3, Chance=0.035, Color=Color3.fromRGB(124,238,255)},
+ Rainbow={Multiplier=5, Chance=0.012, Color=Color3.fromRGB(241,130,255)},
+}
+D.StartCash=150
+D.SellRatio=0.9
+D.PadLock=60
+D.FusionCount=3
+D.SpeedTiers=10
+D.SpeedStep=2
+D.RebirthCost=25000
+D.RebirthBonus=0.5
+D.Calm=40
+D.Warning=10
+D.Sweep=9
+D.CaughtPenalty=0.05
+function D.SpeedCost(tier) return math.floor(250*tier^1.6+0.5) end
+function D.Roll(rng)
+ local roll=rng:NextNumber()*100
+ local tier=1
+ for i,t in ipairs(D.Tiers) do roll-=t.Weight; if roll<=0 then tier=i; break end end
+ local choices={}
+ for i,s in ipairs(D.Species) do if s.Tier==tier then table.insert(choices,i) end end
+ local mutation="Normal"
+ local m=rng:NextNumber()
+ local total=0
+ for _,name in ipairs({"Rainbow","Diamond","Gold"}) do
+  total+=D.Mutations[name].Chance
+  if m<total then mutation=name; break end
+ end
+ return {Species=choices[rng:NextInteger(1,#choices)], Mutation=mutation}
 end
-
-function Data.RollMutation(random)
-	local roll = random:NextNumber()
-	local total = 0
-	for _, mutation in ipairs(Data.Mutations) do
-		total += mutation.Chance
-		if roll <= total then
-			return mutation
-		end
-	end
-	return Data.Mutations[1]
+function D.Price(item) return D.Tiers[D.Species[item.Species].Tier].Price end
+function D.Income(item)
+ return D.Tiers[D.Species[item.Species].Tier].Income*D.Mutations[item.Mutation].Multiplier
 end
-
-function Data.SpeedCost(tier)
-	return math.floor(250 * tier ^ 1.6 + 0.5)
-end
-
-function Data.IncomeMultiplier(rebirths)
-	return 1 + rebirths * Data.RebirthIncomeBonus
-end
-
-return Data
+return D
