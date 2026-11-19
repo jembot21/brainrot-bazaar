@@ -1,174 +1,126 @@
--- The HUD reads the server's replicated stats and phase clock.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Data = require(ReplicatedStorage.Shared.BrainrotData)
 
 local player = Players.LocalPlayer
-local data = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("BrainrotData"))
-local events = ReplicatedStorage:WaitForChild("TsunamiEvents")
-local world = workspace:WaitForChild("TsunamiIsland")
-local stats = player:WaitForChild("leaderstats")
-local cash = stats:WaitForChild("Cash")
-local income = stats:WaitForChild("$/s")
-
-local mint = Color3.fromRGB(125, 255, 205)
-local white = Color3.fromRGB(248, 251, 255)
-local navy = Color3.fromRGB(16, 33, 50)
-local muted = Color3.fromRGB(177, 199, 218)
-
+local remotes = ReplicatedStorage:WaitForChild("BrainrotRemotes")
 local gui = Instance.new("ScreenGui")
-gui.Name = "TsunamiHUD"
+gui.Name = "IslandHud"
 gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
-local function panel(parent, size, position, anchor)
-	local frame = Instance.new("Frame")
-	frame.Size = size
-	frame.Position = position
-	frame.AnchorPoint = anchor or Vector2.zero
-	frame.BackgroundColor3 = navy
-	frame.BackgroundTransparency = 0.09
-	frame.Parent = parent
+local function label(name, size, position, text, color)
+	local item = Instance.new("TextLabel")
+	item.Name = name
+	item.Size = size
+	item.Position = position
+	item.BackgroundColor3 = Color3.fromRGB(23, 39, 52)
+	item.BackgroundTransparency = 0.13
+	item.BorderSizePixel = 0
+	item.Font = Enum.Font.GothamBold
+	item.TextColor3 = color or Color3.new(1, 1, 1)
+	item.TextScaled = true
+	item.Text = text
+	item.Parent = gui
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, 12)
-	corner.Parent = frame
-	local stroke = Instance.new("UIStroke")
-	stroke.Color = Color3.fromRGB(116, 175, 198)
-	stroke.Transparency = 0.65
-	stroke.Parent = frame
-	return frame
+	corner.Parent = item
+	return item
 end
 
-local function label(parent, size, position, textSize, color, font)
-	local text = Instance.new("TextLabel")
-	text.Size = size
-	text.Position = position
-	text.BackgroundTransparency = 1
-	text.TextColor3 = color
-	text.Font = font or Enum.Font.GothamBold
-	text.TextSize = textSize
-	text.Parent = parent
-	return text
+local cashLabel = label("Cash", UDim2.fromOffset(220, 46), UDim2.fromOffset(18, 18), "Cash: $150", Color3.fromRGB(255, 230, 129))
+local waveLabel = label("Wave", UDim2.new(0.48, 0, 0, 48), UDim2.new(0.26, 0, 0, 18), "CALM", Color3.fromRGB(185, 242, 255))
+local statsLabel = label("Stats", UDim2.fromOffset(220, 40), UDim2.fromOffset(18, 72), "Speed 0/10 · Rebirths 0", Color3.fromRGB(205, 229, 239))
+local toastLabel = label("Toast", UDim2.new(0.5, 0, 0, 48), UDim2.new(0.25, 0, 0.78, 0), "Collect, place, and get to high ground!", Color3.fromRGB(255, 239, 180))
+toastLabel.Visible = true
+
+local function button(name, position, text, color)
+	local item = Instance.new("TextButton")
+	item.Name = name
+	item.Size = UDim2.fromOffset(205, 54)
+	item.Position = position
+	item.BackgroundColor3 = color
+	item.BorderSizePixel = 0
+	item.Font = Enum.Font.GothamBold
+	item.TextColor3 = Color3.new(1, 1, 1)
+	item.TextScaled = true
+	item.Text = text
+	item.Parent = gui
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 12)
+	corner.Parent = item
+	return item
 end
 
-local header = panel(gui, UDim2.new(0.86, 0, 0, 122), UDim2.new(0.5, 0, 0, 9), Vector2.new(0.5, 0))
-local maxWidth = Instance.new("UISizeConstraint")
-maxWidth.MaxSize = Vector2.new(420, 122)
-maxWidth.Parent = header
-local cashText = label(header, UDim2.new(1, 0, 0, 44), UDim2.fromOffset(0, 3), 38, mint, Enum.Font.GothamBlack)
-local metrics = label(header, UDim2.new(1, 0, 0, 23), UDim2.fromOffset(0, 45), 14, white)
-local waveText = label(header, UDim2.new(1, 0, 0, 24), UDim2.fromOffset(0, 75), 16, white)
-local track = panel(header, UDim2.new(1, -24, 0, 6), UDim2.fromOffset(12, 105))
-track.BackgroundColor3 = Color3.fromRGB(49, 70, 91)
-local fill = Instance.new("Frame")
-fill.BorderSizePixel = 0
-fill.Parent = track
-local rounding = Instance.new("UICorner")
-rounding.CornerRadius = UDim.new(1, 0)
-rounding.Parent = fill
+local speedButton = button("SpeedShop", UDim2.new(1, -223, 1, -132), "Speed +2", Color3.fromRGB(63, 144, 205))
+local rebirthButton = button("Rebirth", UDim2.new(1, -223, 1, -68), "Rebirth $25,000", Color3.fromRGB(141, 86, 190))
+local state = { Cash = Data.StartCash, Speed = 0, Rebirths = 0 }
 
-local feedback = label(gui, UDim2.new(0.95, 0, 0, 52), UDim2.new(0.5, 0, 0.78, 0), 19, white)
-feedback.AnchorPoint = Vector2.new(0.5, 0)
-feedback.TextStrokeTransparency = 0.25
-feedback.TextWrapped = true
-feedback.Text = ""
-local feedbackVersion = 0
-events.Feedback.OnClientEvent:Connect(function(message)
-	feedbackVersion += 1
-	local version = feedbackVersion
-	feedback.Text = message
-	task.delay(3, function()
-		if feedbackVersion == version then feedback.Text = "" end
+local function update()
+	cashLabel.Text = "Cash: $" .. tostring(state.Cash)
+	local nextTier = state.Speed + 1
+	statsLabel.Text = "Speed " .. state.Speed .. "/10 · Rebirths " .. state.Rebirths
+	if state.Speed >= Data.SpeedTiers then
+		speedButton.Text = "MAX SPEED"
+	else
+		speedButton.Text = "+2 Speed · $" .. Data.SpeedCost(nextTier)
+	end
+	rebirthButton.Text = state.Cash >= Data.RebirthCost and "REBIRTH · $25,000" or "Rebirth · $25,000"
+end
+
+speedButton.Activated:Connect(function()
+	remotes.BuySpeed:FireServer()
+end)
+rebirthButton.Activated:Connect(function()
+	remotes.Rebirth:FireServer()
+end)
+
+remotes.CashChanged.OnClientEvent:Connect(function(cash, rebirths, speed)
+	state.Cash = cash
+	state.Rebirths = rebirths
+	state.Speed = speed
+	update()
+end)
+
+local toastToken = 0
+remotes.Toast.OnClientEvent:Connect(function(message)
+	toastToken += 1
+	local token = toastToken
+	toastLabel.Text = tostring(message)
+	toastLabel.Visible = true
+	task.delay(3.5, function()
+		if token == toastToken then toastLabel.Visible = false end
 	end)
 end)
 
-local toggle = Instance.new("TextButton")
-toggle.Size = UDim2.fromOffset(144, 40)
-toggle.Position = UDim2.new(1, -12, 0, 142)
-toggle.AnchorPoint = Vector2.new(1, 0)
-toggle.BackgroundColor3 = navy
-toggle.TextColor3 = mint
-toggle.Font = Enum.Font.GothamBold
-toggle.TextSize = 15
-toggle.Parent = gui
-local toggleCorner = Instance.new("UICorner")
-toggleCorner.CornerRadius = UDim.new(0, 10)
-toggleCorner.Parent = toggle
-
-local index = panel(gui, UDim2.new(0, 246, 1, -205), UDim2.new(1, -12, 0, 189), Vector2.new(1, 0))
-local indexSize = Instance.new("UISizeConstraint")
-indexSize.MaxSize = Vector2.new(246, 272)
-indexSize.Parent = index
-local scroll = Instance.new("ScrollingFrame")
-scroll.Size = UDim2.fromScale(1, 1)
-scroll.CanvasSize = UDim2.fromOffset(0, 24 + #data.Cast * 20)
-scroll.BackgroundTransparency = 1
-scroll.BorderSizePixel = 0
-scroll.ScrollBarThickness = 4
-scroll.ScrollBarImageColor3 = mint
-scroll.ScrollingDirection = Enum.ScrollingDirection.Y
-scroll.Parent = index
-index.Visible = false
-toggle.Activated:Connect(function() index.Visible = not index.Visible end)
-local entries = {}
-for number in ipairs(data.Cast) do
-	local entry = label(scroll, UDim2.new(1, -24, 0, 19), UDim2.fromOffset(12, 12 + (number - 1) * 20), 13, muted)
-	entry.TextXAlignment = Enum.TextXAlignment.Left
-	entries[number] = entry
-end
-
--- Refresh the checklist from the ownership attributes replicated by the server.
-local function updateCollection()
-	local owned = 0
-	for number, definition in ipairs(data.Cast) do
-		local unlocked = player:GetAttribute("Owned_" .. number)
-		owned += unlocked and 1 or 0
-		entries[number].Text = (unlocked and "✓  " or "○  ") .. definition.name
-		entries[number].TextColor3 = unlocked and data.Rarities[definition.rarity].color or muted
+local wavePhase = "CALM"
+local waveEnd = 0
+local waveHeight = 6
+remotes.WaveStatus.OnClientEvent:Connect(function(phase, duration, height)
+	wavePhase = phase
+	waveEnd = os.clock() + duration
+	waveHeight = height
+	if phase == "WARNING" then
+		waveLabel.Text = "TSUNAMI WARNING! GET TO HIGH GROUND"
+		waveLabel.BackgroundColor3 = Color3.fromRGB(186, 65, 71)
+	elseif phase == "SWEEP" then
+		waveLabel.BackgroundColor3 = Color3.fromRGB(31, 112, 157)
+	else
+		waveLabel.BackgroundColor3 = Color3.fromRGB(23, 39, 52)
 	end
-	toggle.Text = ("Collection  %d / %d"):format(owned, #data.Cast)
-end
-for number in ipairs(data.Cast) do
-	player:GetAttributeChangedSignal("Owned_" .. number):Connect(updateCollection)
-end
-updateCollection()
-
-local function money(amount)
-	if amount == math.floor(amount) then return string.format("%d", amount) end
-	return (string.format("%.2f", amount):gsub("0$", ""))
-end
-
-local function updateMoney()
-	cashText.Text = "$" .. money(cash.Value)
-	metrics.Text = ("$%s/s   ·   %.1fx income   ·   Speed %d/%d"):format(
-		money(income.Value), player:GetAttribute("Multiplier") or 1,
-		player:GetAttribute("SpeedTier") or 0, data.SpeedShop.SpeedMaxTier
-	)
-end
-cash.Changed:Connect(updateMoney)
-income.Changed:Connect(updateMoney)
-player:GetAttributeChangedSignal("Multiplier"):Connect(updateMoney)
-player:GetAttributeChangedSignal("SpeedTier"):Connect(updateMoney)
-updateMoney()
-
-local phaseStyles = {
-	CALM = {title = "CALM", color = mint, duration = data.Wave.CalmSeconds},
-	WARNING = {title = "TSUNAMI INCOMING", color = Color3.fromRGB(255, 143, 105), duration = data.Wave.WarningSeconds},
-	WAVE = {title = "WAVE CROSSING", color = Color3.fromRGB(126, 213, 255), duration = data.Wave.WaveCrossSeconds},
-}
--- Cache the status text while the progress fill updates each frame.
-local displayedStatus
+end)
 
 RunService.RenderStepped:Connect(function()
-	local style = phaseStyles[world:GetAttribute("WavePhase")] or phaseStyles.CALM
-	local endsAt = world:GetAttribute("WaveEndsAt") or workspace:GetServerTimeNow()
-	local remaining = math.max(0, endsAt - workspace:GetServerTimeNow())
-	local status = ("%s  ·  %ds  ·  %d studs"):format(style.title, math.ceil(remaining), world:GetAttribute("WaveHeight") or 0)
-	if status ~= displayedStatus then
-		displayedStatus = status
-		waveText.Text = status
-		waveText.TextColor3 = style.color
-		fill.BackgroundColor3 = style.color
+	local remaining = math.max(0, math.ceil(waveEnd - os.clock()))
+	if wavePhase == "WARNING" then
+		waveLabel.Text = "TSUNAMI WARNING · " .. remaining .. "s · HIGH GROUND!"
+	elseif wavePhase == "SWEEP" then
+		waveLabel.Text = "WAVE SWEEP · " .. remaining .. "s · " .. waveHeight .. " STUDS"
+	else
+		waveLabel.Text = "CALM · NEXT WAVE IN " .. remaining .. "s"
 	end
-	fill.Size = UDim2.fromScale(math.clamp(remaining / style.duration, 0, 1), 1)
 end)
+
+update()

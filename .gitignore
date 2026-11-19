@@ -1,11 +1,4 @@
-# Local Roblox builds and hand-in output
-/game.rbxl
-/out/
-
-# Local Node dependencies
-/node_modules/
-
-# Local logs, Roblox place locks, and editor backups
-*.log
-*.rbxl.lock
-*~
+node_modules
+*.rbxl
+*.rbxlx
+.DS_Store

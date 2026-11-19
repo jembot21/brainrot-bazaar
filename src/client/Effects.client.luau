@@ -1,141 +1,142 @@
--- Banners and lighting effects run locally for each player.
-local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local CollectionService = game:GetService("CollectionService")
 
-local events = ReplicatedStorage:WaitForChild("TsunamiEvents")
-local world = workspace:WaitForChild("TsunamiIsland")
+local player = Players.LocalPlayer
+local remotes = ReplicatedStorage:WaitForChild("BrainrotRemotes")
 local gui = Instance.new("ScreenGui")
-gui.Name = "TsunamiEffects"
+gui.Name = "IslandEffects"
 gui.IgnoreGuiInset = true
-gui.DisplayOrder = 5
 gui.ResetOnSpawn = false
-gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+gui.DisplayOrder = 10
+gui.Parent = player:WaitForChild("PlayerGui")
 
-local tint = Instance.new("ColorCorrectionEffect")
-tint.Name = "TsunamiTint"
-tint.Parent = Lighting
-
-local function tween(instance, duration, properties)
-	local animation = TweenService:Create(instance, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), properties)
-	animation:Play()
-	return animation
+local edges = {}
+for _, spec in ipairs({
+	{ Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 0, 0, 0) },
+	{ Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 0, 1, -16) },
+	{ Size = UDim2.new(0, 16, 1, 0), Position = UDim2.new(0, 0, 0, 0) },
+	{ Size = UDim2.new(0, 16, 1, 0), Position = UDim2.new(1, -16, 0, 0) },
+}) do
+	local edge = Instance.new("Frame")
+	edge.Size = spec.Size
+	edge.Position = spec.Position
+	edge.BorderSizePixel = 0
+	edge.BackgroundColor3 = Color3.fromRGB(238, 71, 74)
+	edge.BackgroundTransparency = 1
+	edge.Parent = gui
+	table.insert(edges, edge)
 end
 
-local function banner(title, color, y, hold, height)
-	local text = Instance.new("TextLabel")
-	text.AnchorPoint = Vector2.new(0.5, 0.5)
-	text.Position = UDim2.fromScale(0.5, y + 0.07)
-	text.Size = UDim2.new(0.9, 0, 0, height)
-	text.BackgroundTransparency = 1
-	text.Font = Enum.Font.GothamBlack
-	text.Text = title
-	text.TextColor3 = color
-	text.TextScaled = true
-	text.TextStrokeTransparency = 0.15
-	text.Parent = gui
-	local size = Instance.new("UITextSizeConstraint")
-	size.MaxTextSize = 46
-	size.Parent = text
-	tween(text, 0.28, {Position = UDim2.fromScale(0.5, y)})
-	task.delay(hold, function()
-		tween(text, 0.35, {TextTransparency = 1, TextStrokeTransparency = 1}).Completed:Wait()
-		text:Destroy()
-	end)
-end
-
-local lastPhase
-
-local function warning(title, duration, height)
-	if lastPhase == "WARNING" then return end
-	lastPhase = "WARNING"
-	tween(tint, 0.8, {TintColor = Color3.fromRGB(255, 139, 114), Saturation = -0.1})
-	banner(("%s\n%ds  ·  %d studs"):format(title, duration, height), Color3.fromRGB(255, 155, 101), 0.34, 2.5, 84)
-end
-
-local function impact(duration)
-	if lastPhase == "WAVE" then return end
-	lastPhase = "WAVE"
-	tween(tint, 0.2, {TintColor = Color3.fromRGB(114, 206, 255), Saturation = 0.12})
-	local rumble = TweenService:Create(tint, TweenInfo.new(0.28, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {Contrast = 0.16})
-	rumble:Play()
-	task.delay(duration, function()
-		rumble:Cancel()
-		lastPhase = nil
-		tween(tint, 0.65, {TintColor = Color3.new(1, 1, 1), Saturation = 0, Contrast = 0})
-	end)
-	local wash = Instance.new("Frame")
-	wash.Size = UDim2.fromScale(1, 1)
-	wash.BackgroundColor3 = Color3.fromRGB(51, 176, 255)
-	wash.BackgroundTransparency = 0.74
-	wash.BorderSizePixel = 0
-	wash.Parent = gui
-	tween(wash, 0.75, {BackgroundTransparency = 1}).Completed:Once(function() wash:Destroy() end)
-end
-
-events.Warning.OnClientEvent:Connect(warning)
-events.Impact.OnClientEvent:Connect(impact)
-
--- The world clock also covers players whose client loaded after the phase event.
-local function syncPhase()
-	local remaining = (world:GetAttribute("WaveEndsAt") or 0) - workspace:GetServerTimeNow()
-	if remaining <= 0 then return end
-	local phase = world:GetAttribute("WavePhase")
-	if phase == "WARNING" then
-		warning("TSUNAMI INCOMING", math.ceil(remaining), world:GetAttribute("WaveHeight") or 0)
-	elseif phase == "WAVE" then
-		impact(remaining)
-	end
-end
-world:GetAttributeChangedSignal("WavePhase"):Connect(syncPhase)
-syncPhase()
-events.Fusion.OnClientEvent:Connect(function(species, mutation)
-	local name = mutation == "" and species or mutation .. " " .. species
-	banner("FUSION!\n" .. name, Color3.fromRGB(241, 184, 255), 0.48, 2.1, 88)
-end)
-events.Income.OnClientEvent:Connect(function(amount)
-	banner(("+$%g"):format(amount), Color3.fromRGB(113, 255, 182), 0.225, 0.38, 24)
-end)
-
--- Ambient particles live on this client and use their own render connection.
-pcall(function()
-	local RunService = game:GetService("RunService")
-	local motes = {}
-	local origins = {
-		Vector3.new(-82, 4, 39), Vector3.new(-79, 7, 51), Vector3.new(-80, 4, -61),
-		Vector3.new(-24, 5, -53), Vector3.new(12, 3, -69), Vector3.new(25, 3, 70),
-		Vector3.new(40, 5, -31), Vector3.new(48, 6, 30),
-	}
-	local folder = Instance.new("Folder")
-	folder.Name = "IslandMotes"
-	for index, origin in ipairs(origins) do
-		local mote = Instance.new("Part")
-		mote.Name = "Sparkle"
-		mote.Shape = Enum.PartType.Ball
-		mote.Size = Vector3.new(0.18, 0.18, 0.18)
-		mote.Material = Enum.Material.Neon
-		mote.Color = Color3.fromRGB(255, 235, 178)
-		mote.Transparency = 0.5
-		mote.Anchored = true
-		mote.CanCollide = false
-		mote.CanTouch = false
-		mote.CanQuery = false
-		mote.CastShadow = false
-		mote.Position = origin
-		mote.Parent = folder
-		motes[index] = mote
-	end
-	folder.Parent = world
-
-	-- Stable origins keep the motes near their scenery as they drift.
-	local elapsed = 0
-	RunService.RenderStepped:Connect(function(dt)
-		elapsed += dt
-		for index, mote in ipairs(motes) do
-			local phase = elapsed * 0.48 + index * 1.7
-			mote.Position = origins[index] + Vector3.new(math.cos(phase) * 1.6, math.sin(phase) * 0.7, math.sin(phase) * 1.1)
-			mote.Transparency = 0.55 + math.sin(phase + index) * 0.2
+local warningToken = 0
+remotes.WaveWarning.OnClientEvent:Connect(function()
+	warningToken += 1
+	local token = warningToken
+	task.spawn(function()
+		local finish = os.clock() + 10
+		while os.clock() < finish and token == warningToken do
+			for _, edge in ipairs(edges) do
+				TweenService:Create(edge, TweenInfo.new(0.35), { BackgroundTransparency = 0.2 }):Play()
+			end
+			task.wait(0.4)
+			for _, edge in ipairs(edges) do
+				TweenService:Create(edge, TweenInfo.new(0.45), { BackgroundTransparency = 0.82 }):Play()
+			end
+			task.wait(0.5)
+		end
+		for _, edge in ipairs(edges) do
+			TweenService:Create(edge, TweenInfo.new(0.5), { BackgroundTransparency = 1 }):Play()
 		end
 	end)
+end)
+
+local function bead(position, color, direction, scale)
+	local drop = Instance.new("Part")
+	drop.Name = "SplashBead"
+	drop.Shape = Enum.PartType.Ball
+	drop.Size = Vector3.new(scale, scale, scale)
+	drop.Position = position
+	drop.Color = color
+	drop.Material = Enum.Material.Neon
+	drop.Anchored = true
+	drop.CanCollide = false
+	drop.Parent = workspace
+	local tween = TweenService:Create(drop, TweenInfo.new(0.65, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Position = position + direction,
+		Transparency = 1,
+		Size = Vector3.new(0.08, 0.08, 0.08),
+	})
+	tween:Play()
+	tween.Completed:Connect(function() drop:Destroy() end)
+end
+
+remotes.Caught.OnClientEvent:Connect(function(loss)
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if root then
+		for index = 1, 18 do
+			local angle = index / 18 * math.pi * 2
+			bead(root.Position, Color3.fromRGB(62, 195, 228), Vector3.new(math.cos(angle) * 5, math.random() * 4 + 1, math.sin(angle) * 5), math.random(3, 7) / 10)
+		end
+	end
+	local message = Instance.new("TextLabel")
+	message.Name = "CaughtMessage"
+	message.AnchorPoint = Vector2.new(0.5, 0.5)
+	message.Position = UDim2.fromScale(0.5, 0.43)
+	message.Size = UDim2.fromOffset(480, 76)
+	message.BackgroundTransparency = 1
+	message.Font = Enum.Font.GothamBlack
+	message.TextColor3 = Color3.fromRGB(255, 230, 236)
+	message.TextStrokeTransparency = 0.25
+	message.TextScaled = true
+	message.Text = "CAUGHT! Lost carried brainrot + $" .. tostring(loss)
+	message.Parent = gui
+	TweenService:Create(message, TweenInfo.new(1.8), { TextTransparency = 1, TextStrokeTransparency = 1, Position = UDim2.fromScale(0.5, 0.34) }):Play()
+	task.delay(2, function() message:Destroy() end)
+end)
+
+remotes.PurchaseSparkle.OnClientEvent:Connect(function(position)
+	for index = 1, 14 do
+		local angle = index / 14 * math.pi * 2
+		local color = Color3.fromHSV(index / 14, 0.65, 1)
+		bead(position + Vector3.new(0, 1.3, 0), color, Vector3.new(math.cos(angle) * 2.8, math.random(2, 5), math.sin(angle) * 2.8), 0.26)
+	end
+end)
+
+remotes.CameraShake.OnClientEvent:Connect(function(duration, magnitude)
+	local camera = workspace.CurrentCamera
+	if not camera then return end
+	local started = os.clock()
+	local connection
+	local base = camera.CFrame
+	connection = game:GetService("RunService").RenderStepped:Connect(function()
+		local elapsed = os.clock() - started
+		if elapsed >= duration then
+			camera.CFrame = base
+			connection:Disconnect()
+			return
+		end
+		local falloff = 1 - elapsed / duration
+		local offset = Vector3.new(math.random() - 0.5, math.random() - 0.5, 0) * magnitude * falloff
+		camera.CFrame = base * CFrame.new(offset)
+	end)
+end)
+
+local function addMutationSparkle(instance)
+	if not instance:IsA("BasePart") then return end
+	local model = instance:FindFirstAncestorOfClass("Model")
+	if not model or model:GetAttribute("Mutation") ~= "Rainbow" or not model.PrimaryPart then return end
+	if model.PrimaryPart:FindFirstChild("ClientMutationSparkle") then return end
+	local sparkles = Instance.new("Sparkles")
+	sparkles.Name = "ClientMutationSparkle"
+	sparkles.SparkleColor = Color3.fromRGB(255, 137, 232)
+	sparkles.Parent = model.PrimaryPart
+end
+
+for _, instance in ipairs(CollectionService:GetTagged("BrainrotCharacter")) do
+	addMutationSparkle(instance)
+end
+CollectionService:GetInstanceAddedSignal("BrainrotCharacter"):Connect(function(instance)
+	task.defer(addMutationSparkle, instance)
 end)

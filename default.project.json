@@ -2,55 +2,17 @@
   "name": "Brainrot Tsunami Escape",
   "tree": {
     "$className": "DataModel",
-    "Players": {
-      "$properties": {
-        "CharacterAutoLoads": false
-      }
-    },
-    "ServerScriptService": {
-      "Server": {
-        "$path": "src/server"
-      }
-    },
     "ReplicatedStorage": {
       "Shared": {
         "$path": "src/shared"
       }
     },
+    "ServerScriptService": {
+      "$path": "src/server"
+    },
     "StarterPlayer": {
       "StarterPlayerScripts": {
-        "Client": {
-          "$path": "src/client"
-        }
-      }
-    },
-    "Workspace": {
-      "Baseplate": {
-        "$className": "Part",
-        "$properties": {
-          "Anchored": true,
-          "Color": [1.0, 0.7451, 0.2353],
-          "Locked": true,
-          "Position": [
-            0,
-            -10,
-            0
-          ],
-          "Size": [
-            512,
-            20,
-            512
-          ]
-        }
-      }
-    },
-    "Lighting": {
-      "$properties": {
-        "Brightness": 2.8,
-        "ClockTime": 15,
-        "Ambient": [0.34, 0.38, 0.48],
-        "OutdoorAmbient": [0.51, 0.58, 0.66],
-        "GlobalShadows": true
+        "$path": "src/client"
       }
     }
   }

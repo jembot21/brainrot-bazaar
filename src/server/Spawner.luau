@@ -1,107 +1,110 @@
--- The conveyor advances its pickups on the server.
-local RunService = game:GetService("RunService")
-local Spawner = {}
+local Players = game:GetService("Players")
+local Data = require(game:GetService("ReplicatedStorage").Shared.BrainrotData)
+local CharacterFactory = require(script.Parent.CharacterFactory)
 
-local spawnPoint = Vector3.new(-74, 9.6, 0)
-local beltFacing = CFrame.Angles(0, -math.pi / 2, 0)
-local beltEnd = -23
-local beltSpeed = 3.1
-local spawnInterval = 2.5
+local Spawner = {}
+local economy
+local baseManager
+local remotes
+local belt
+local offerFolder
 local random = Random.new()
 
--- Choose a rarity by weight, then choose uniformly among its species.
-local function rollSpecies(data)
-	local roll = random:NextNumber(0, 100)
-	for _, rarity in ipairs(data.RarityOrder) do
-		roll -= data.Rarities[rarity].weight
-		if roll < 0 then
-			local choices = {}
-			for _, definition in ipairs(data.Cast) do
-				if definition.rarity == rarity then
-					table.insert(choices, definition)
-				end
-			end
-			return choices[random:NextInteger(1, #choices)]
-		end
+local function rarityRoll()
+	local total = 0
+	for _, rarity in ipairs(Data.RarityOrder) do total += Data.RarityWeights[rarity] end
+	local roll = random:NextNumber(0, total)
+	local cursor = 0
+	for _, rarity in ipairs(Data.RarityOrder) do
+		cursor += Data.RarityWeights[rarity]
+		if roll <= cursor then return rarity end
 	end
+	return "Common"
 end
 
-local function rollMutation(data)
-	local roll = random:NextNumber()
-	for _, mutation in ipairs(data.Mutations) do
-		roll -= mutation.chance
-		if roll < 0 then return mutation end
+local function chooseSpecies()
+	local rarity = rarityRoll()
+	local tier = table.find(Data.RarityOrder, rarity)
+	local choices = {}
+	for _, species in ipairs(Data.Species) do
+		if species.Tier == tier then table.insert(choices, species) end
 	end
-	return nil
+	return choices[random:NextInteger(1, #choices)]
 end
 
-function Spawner.Start(data, world, economy, factory, events)
-	local marching = {}
-
-	local function spawnBrainrot()
-		local definition = rollSpecies(data)
-		local item = factory.Create(definition, rollMutation(data))
-		item.prompt.ActionText = ("Catch · $%d"):format(definition.price)
-		item.model:PivotTo(CFrame.new(spawnPoint) * beltFacing)
-		item.model.Parent = world.folder
-		marching[item] = spawnPoint.X
-		item.connection = item.prompt.Triggered:Connect(function(player)
-			local state = economy.Players[player]
-			local character = player.Character
-			local root = character and character:FindFirstChild("HumanoidRootPart")
-			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-			if not marching[item] or not state or not root or not humanoid or humanoid.Health <= 0
-				or (root.Position - item.prompt.Parent.Position).Magnitude > 13 then return end
-			if not player.RespawnLocation or player.RespawnLocation == world.lobbySpawn then
-				events.Feedback:FireClient(player, "All bases are occupied. A plot will open when someone leaves.")
-			elseif state.carry then
-				events.Feedback:FireClient(player, "Place the brainrot you're carrying first")
-			elseif economy.Spend(player, definition.price) then
-				-- Remove the caught model from belt updates before handing it to the player.
-				marching[item] = nil
-				item.connection:Disconnect()
-				item.connection = nil
-				item.prompt.Enabled = false
-				state.carry = item
-				events.Feedback:FireClient(player, "Caught " .. definition.name .. "! Run to an empty base pad")
-			else
-				events.Feedback:FireClient(player, ("You need $%d"):format(definition.price))
-			end
-		end)
-	end
-
-	RunService.Heartbeat:Connect(function(dt)
-		for item, x in pairs(marching) do
-			x += dt * beltSpeed
-			if x >= beltEnd then
-				marching[item] = nil
-				item.model:Destroy()
-			else
-				marching[item] = x
-				item.model:PivotTo(CFrame.new(x, spawnPoint.Y, spawnPoint.Z) * beltFacing)
-			end
+local function spawnOffer(index)
+	local species = chooseSpecies()
+	local mutation = Data.RollMutation(random)
+	local model = CharacterFactory.Create(species.Name, mutation.Name)
+	model.Name = "BeltOffer_" .. index
+	model.Parent = offerFolder
+	model:PivotTo(belt.CFrame * CFrame.new((index - 2.5) * 8.2, 1.25, 0))
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "PurchasePrompt"
+	prompt.ActionText = "Buy $" .. species.Price
+	prompt.ObjectText = mutation.Name .. " " .. species.Name
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.HoldDuration = 0.25
+	prompt.MaxActivationDistance = 11
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = model.PrimaryPart
+	prompt.Triggered:Connect(function(player)
+		if not model.Parent or model:GetAttribute("Sold") or model:GetAttribute("ReservedBy") then return end
+		model:SetAttribute("ReservedBy", player.UserId)
+		if economy.GetCash(player) < species.Price then
+			model:SetAttribute("ReservedBy", nil)
+			if remotes.Toast then remotes.Toast:FireClient(player, "Need $" .. species.Price .. " to buy this brainrot.") end
+			return
 		end
-		for player, state in pairs(economy.Players) do
-			local character = player.Character
-			local root = character and character:FindFirstChild("HumanoidRootPart")
-			if root and state.carry then
-				-- Preserve heading while keeping the carried model level.
-				local look = root.CFrame.LookVector
-				local yaw = math.atan2(-look.X, -look.Z)
-				state.carry.model:PivotTo(CFrame.new(root.Position + Vector3.new(0, data.CarryOffset, 0)) * CFrame.Angles(0, yaw, 0))
-			end
+		if not baseManager.GiveCarry(player, model) then
+			model:SetAttribute("ReservedBy", nil)
+			if remotes.Toast then remotes.Toast:FireClient(player, "Your hands are full, or you need a plot.") end
+			return
 		end
+		if not economy.TrySpend(player, species.Price) then
+			baseManager.ClearCarry(player)
+			if remotes.Toast then remotes.Toast:FireClient(player, "Need $" .. species.Price .. " to buy this brainrot.") end
+			return
+		end
+		model:SetAttribute("Sold", true)
+		if remotes.PurchaseSparkle then remotes.PurchaseSparkle:FireAllClients(model:GetPivot().Position) end
+		if remotes.Toast then remotes.Toast:FireClient(player, "Bought " .. mutation.Name .. " " .. species.Name .. "!") end
 	end)
+	local tag = Instance.new("BillboardGui")
+	tag.Name = "PriceTag"
+	tag.Size = UDim2.fromScale(4, 1)
+	tag.StudsOffset = Vector3.new(0, 3.3, 0)
+	tag.MaxDistance = 70
+	tag.AlwaysOnTop = false
+	tag.Parent = model.PrimaryPart
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundColor3 = Color3.fromRGB(30, 45, 54)
+	label.BackgroundTransparency = 0.15
+	label.TextColor3 = Color3.fromRGB(255, 239, 169)
+	label.Font = Enum.Font.GothamBold
+	label.TextScaled = true
+	label.Text = "$" .. species.Price
+	label.Parent = tag
+	return model
+end
 
+function Spawner.Start(world, economyService, bases, remoteFolder)
+	economy = economyService
+	baseManager = bases
+	remotes = remoteFolder
+	belt = world.Belt
+	offerFolder = Instance.new("Folder")
+	offerFolder.Name = "BeltOffers"
+	offerFolder.Parent = world.Root
+	for index = 1, 4 do spawnOffer(index) end
 	task.spawn(function()
 		while true do
-			if world.folder:GetAttribute("WavePhase") ~= "WAVE" then
-				spawnBrainrot()
-			end
-			task.wait(spawnInterval)
+			task.wait(12)
+			offerFolder:ClearAllChildren()
+			for index = 1, 4 do spawnOffer(index) end
 		end
 	end)
 end
-
 
 return Spawner

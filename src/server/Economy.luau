@@ -1,93 +1,169 @@
--- Player balances and income live in server state.
-local Economy = {Players = {}}
+local Players = game:GetService("Players")
+local Data = require(game:GetService("ReplicatedStorage").Shared.BrainrotData)
 
-function Economy.Init(data, events)
-	Economy.Data = data
-	Economy.Events = events
+local Economy = {}
+local states = {}
+local remotes
+local getPlaced = function()
+	return {}
 end
 
-function Economy.AddPlayer(player)
-	Economy.Players[player] = {cash = Economy.Data.StartCash, placed = {}, rebirths = 0, multiplier = 1, speedTier = 0}
+local function publish(player)
+	local state = states[player]
+	if not state then
+		return
+	end
+	local leaderstats = player:FindFirstChild("leaderstats")
+	if leaderstats then
+		leaderstats.Cash.Value = math.floor(state.Cash)
+		leaderstats.Rebirths.Value = state.Rebirths
+	end
+	player:SetAttribute("Cash", math.floor(state.Cash))
+	player:SetAttribute("SpeedTier", state.SpeedTier)
+	player:SetAttribute("Rebirths", state.Rebirths)
+	if remotes and remotes.CashChanged then
+		remotes.CashChanged:FireClient(player, math.floor(state.Cash), state.Rebirths, state.SpeedTier)
+	end
+end
+
+local function addPlayer(player)
 	local stats = Instance.new("Folder")
 	stats.Name = "leaderstats"
-	for _, key in ipairs({"Cash", "$/s", "Rebirths"}) do
-		local value = Instance.new("NumberValue")
-		value.Name = key
-		value.Parent = stats
-	end
 	stats.Parent = player
-	Economy.Sync(player)
+	local cash = Instance.new("IntValue")
+	cash.Name = "Cash"
+	cash.Value = Data.StartCash
+	cash.Parent = stats
+	local rebirths = Instance.new("IntValue")
+	rebirths.Name = "Rebirths"
+	rebirths.Value = 0
+	rebirths.Parent = stats
+	states[player] = { Cash = Data.StartCash, Rebirths = 0, SpeedTier = 0 }
+	publish(player)
 end
 
--- Recompute income from the current display pads before publishing the stats.
-function Economy.Sync(player)
-	local state = Economy.Players[player]
-	local rate = 0
-	for _, item in pairs(state.placed) do
-		rate += Economy.Data.Income(item.definition, item.mutation)
+function Economy.Start(remoteFolder, placedProvider)
+	remotes = remoteFolder
+	getPlaced = placedProvider or getPlaced
+	Players.PlayerAdded:Connect(addPlayer)
+	Players.PlayerRemoving:Connect(function(player)
+		states[player] = nil
+	end)
+	for _, player in ipairs(Players:GetPlayers()) do
+		if not states[player] then
+			addPlayer(player)
+		end
 	end
-	state.rate = rate * state.multiplier
-	local stats = player.leaderstats
-	stats.Cash.Value = state.cash
-	stats["$/s"].Value = state.rate
-	stats.Rebirths.Value = state.rebirths
-	player:SetAttribute("Multiplier", state.multiplier)
-	player:SetAttribute("SpeedTier", state.speedTier)
-end
-
-function Economy.ApplySpeed(player)
-	local state = Economy.Players[player]
-	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-	if state and humanoid then
-		local shop = Economy.Data.SpeedShop
-		humanoid.WalkSpeed = shop.BaseWalkSpeed + shop.SpeedPerTier * state.speedTier
+	if remotes.BuySpeed then
+		remotes.BuySpeed.OnServerEvent:Connect(function(player)
+			Economy.BuySpeed(player)
+		end)
 	end
-end
-
-function Economy.Spend(player, cost)
-	local state = Economy.Players[player]
-	if not state or state.cash < cost then return false end
-	state.cash -= cost
-	Economy.Sync(player)
-	return true
-end
-
-function Economy.BuySpeed(player)
-	local state = Economy.Players[player]
-	if not state then return end
-	local shop = Economy.Data.SpeedShop
-	local tier = state.speedTier + 1
-	local feedback = Economy.Events.Feedback
-	if tier > shop.SpeedMaxTier then
-		feedback:FireClient(player, "Speed is maxed out!")
-		return
+	if remotes.Rebirth then
+		remotes.Rebirth.OnServerEvent:Connect(function(player)
+			Economy.Rebirth(player)
+		end)
 	end
-	local cost = shop.Cost(tier)
-	if state.cash < cost then
-		feedback:FireClient(player, ("Speed tier %d costs $%d"):format(tier, cost))
-		return
-	end
-	state.cash -= cost
-	state.speedTier = tier
-	Economy.ApplySpeed(player)
-	Economy.Sync(player)
-	feedback:FireClient(player, ("Speed tier %d · WalkSpeed %d"):format(tier, shop.BaseWalkSpeed + shop.SpeedPerTier * tier))
-end
-
--- Each payout uses the per-second rate cached by Sync.
-function Economy.Start()
 	task.spawn(function()
-		while task.wait(1) do
-			for player, state in pairs(Economy.Players) do
-				if state.rate > 0 then
-					state.cash += state.rate
-					Economy.Sync(player)
-					Economy.Events.Income:FireClient(player, state.rate)
+		while true do
+			task.wait(1)
+			for player, state in pairs(states) do
+				if player.Parent == Players then
+					local baseIncome = 0
+					for _, brainrot in ipairs(getPlaced(player)) do
+						if brainrot and brainrot.Parent then
+							baseIncome += brainrot:GetAttribute("Income") or 0
+						end
+					end
+					state.Cash += baseIncome * Data.IncomeMultiplier(state.Rebirths)
+					publish(player)
 				end
 			end
 		end
 	end)
 end
 
+function Economy.GetCash(player)
+	local state = states[player]
+	return state and math.floor(state.Cash) or 0
+end
+
+function Economy.GetState(player)
+	return states[player]
+end
+
+function Economy.AddCash(player, amount)
+	local state = states[player]
+	if not state then
+		return false
+	end
+	state.Cash = math.max(0, state.Cash + amount)
+	publish(player)
+	return true
+end
+
+function Economy.TrySpend(player, amount)
+	local state = states[player]
+	if not state or amount < 0 or state.Cash < amount then
+		return false
+	end
+	state.Cash -= amount
+	publish(player)
+	return true
+end
+
+function Economy.BuySpeed(player)
+	local state = states[player]
+	if not state or state.SpeedTier >= Data.SpeedTiers then
+		return false
+	end
+	local tier = state.SpeedTier + 1
+	local cost = Data.SpeedCost(tier)
+	if not Economy.TrySpend(player, cost) then
+		if remotes.Toast then remotes.Toast:FireClient(player, "Need $" .. cost .. " for the next speed tier.") end
+		return false
+	end
+	state.SpeedTier = tier
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.WalkSpeed = 16 + tier * Data.SpeedPerTier
+	end
+	publish(player)
+	if remotes.Toast then remotes.Toast:FireClient(player, "Speed upgraded to tier " .. tier .. "!") end
+	return true
+end
+
+function Economy.Rebirth(player)
+	local state = states[player]
+	if not state then
+		return false
+	end
+	if not Economy.TrySpend(player, Data.RebirthCost) then
+		if remotes.Toast then remotes.Toast:FireClient(player, "Rebirth costs $" .. Data.RebirthCost .. ".") end
+		return false
+	end
+	state.Rebirths += 1
+	state.SpeedTier = 0
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid then humanoid.WalkSpeed = 16 end
+	publish(player)
+	if remotes.Toast then remotes.Toast:FireClient(player, "Rebirth complete! Income multiplier increased.") end
+	return true
+end
+
+function Economy.SellValue(price)
+	return math.floor(price * Data.SellMultiplier + 0.5)
+end
+
+function Economy.ApplyCaughtPenalty(player)
+	local state = states[player]
+	if not state then return end
+	local loss = math.floor(state.Cash * Data.CaughtCashLoss + 0.5)
+	state.Cash = math.max(0, state.Cash - loss)
+	publish(player)
+	if remotes.Caught then remotes.Caught:FireClient(player, loss) end
+end
 
 return Economy

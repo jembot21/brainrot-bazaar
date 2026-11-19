@@ -1,112 +1,104 @@
--- The server publishes the phase clock and resolves wave hits.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local Data = require(game:GetService("ReplicatedStorage").Shared.BrainrotData)
 
 local WaveEvent = {}
+local baseManager
+local economy
+local remotes
+local currentPhase = "CALM"
+local currentHeight = Data.WaveHeights[1]
+local phaseEndsAt = 0
 
-local function setPhase(world, events, phase, duration, height, cycle)
-	world.folder:SetAttribute("WaveEndsAt", workspace:GetServerTimeNow() + duration)
-	world.folder:SetAttribute("WaveHeight", height)
-	world.folder:SetAttribute("WaveNumber", cycle)
-	-- Publish the phase after its timing and height are available to clients.
-	world.folder:SetAttribute("WavePhase", phase)
-	if phase == "WARNING" then
-		events.Warning:FireAllClients("TSUNAMI INCOMING", duration, height)
-	elseif phase == "WAVE" then
-		events.Impact:FireAllClients(duration, height)
+local function heightForCycle(cycle)
+	local schedule = Data.WaveHeights
+	return schedule[math.min(cycle, #schedule)]
+end
+
+local function announce(phase, duration, height)
+	currentPhase = phase
+	currentHeight = height
+	phaseEndsAt = os.clock() + duration
+	if remotes.WaveStatus then
+		remotes.WaveStatus:FireAllClients(phase, duration, height)
 	end
 end
 
--- Refuge requires standing on a solid surface above the crest.
-local function isAboveWave(character, humanoid, root, height)
-	if root.Position.Y <= height then return false end
-	if humanoid.FloorMaterial == Enum.Material.Air then return false end
-	local filter = RaycastParams.new()
-	filter.FilterDescendantsInstances = {character}
-	filter.RespectCanCollide = true
-	local ground = workspace:Raycast(root.Position, Vector3.new(0, -8, 0), filter)
-	return ground and ground.Position.Y > height
+local function makeWave(height)
+	local wave = Instance.new("Part")
+	wave.Name = "TsunamiWall"
+	wave.Size = Vector3.new(270, height, 8)
+	wave.Position = Vector3.new(0, 2 + height / 2, -145)
+	wave.Anchored = true
+	wave.CanCollide = false
+	wave.Material = Enum.Material.Neon
+	wave.Color = Color3.fromRGB(47, 190, 225)
+	wave.Transparency = 0.32
+	wave.Parent = workspace:FindFirstChild("BrainrotIsland") or workspace
+	local light = Instance.new("PointLight")
+	light.Color = wave.Color
+	light.Brightness = 1.3
+	light.Range = 24
+	light.Parent = wave
+	return wave
 end
 
-local function sweep(world, config, height, economy, bases, events)
-	local wall = Instance.new("Part")
-	wall.Name = "TsunamiWall"
-	wall.Size = Vector3.new(8, height, world.waveWidth)
-	wall.Anchored = true
-	wall.CanCollide = false
-	wall.CanTouch = false
-	wall.CanQuery = false
-	wall.Material = Enum.Material.Glass
-	wall.Color = Color3.fromRGB(48, 188, 255)
-	wall.Transparency = 0.32
-
-	local crest = Instance.new("Part")
-	crest.Name = "FoamCrest"
-	crest.Size = Vector3.new(9, 0.75, world.waveWidth)
-	crest.Anchored = true
-	crest.CanCollide = false
-	crest.CanTouch = false
-	crest.CanQuery = false
-	crest.Material = Enum.Material.Neon
-	crest.Color = Color3.fromRGB(187, 248, 255)
-	crest.Parent = wall
-
-	local function moveWall(x)
-		wall.Position = Vector3.new(x, height / 2, 0)
-		crest.Position = Vector3.new(x, height, 0)
-	end
-	moveWall(world.waveStart)
-	wall.Parent = world.folder
-
-	local hit = {}
-	local elapsed = 0
-	local previousX = world.waveStart
-	-- Check the swept span so a long server frame cannot skip over a player.
-	while elapsed < config.WaveCrossSeconds do
-		elapsed += RunService.Heartbeat:Wait()
-		local progress = math.min(1, elapsed / config.WaveCrossSeconds)
-		local x = world.waveStart + (world.waveEnd - world.waveStart) * progress
-		moveWall(x)
+local function sweep(height)
+	local wave = makeWave(height)
+	announce("SWEEP", Data.WavePhases.Sweep, height)
+	local startZ = -145
+	local endZ = 145
+	local previousZ = startZ
+	local started = os.clock()
+	while os.clock() - started < Data.WavePhases.Sweep do
+		local alpha = math.clamp((os.clock() - started) / Data.WavePhases.Sweep, 0, 1)
+		local currentZ = startZ + (endZ - startZ) * alpha
+		wave.Position = Vector3.new(0, 2 + height / 2, currentZ)
 		for _, player in ipairs(Players:GetPlayers()) do
-			local state = economy.Players[player]
 			local character = player.Character
 			local root = character and character:FindFirstChild("HumanoidRootPart")
-			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-			if state and root and humanoid and humanoid.Health > 0 and not hit[player]
-				and root.Position.X >= previousX - wall.Size.X / 2 and root.Position.X <= x + wall.Size.X / 2
-				and math.abs(root.Position.Z) <= world.waveWidth / 2
-				and not bases.IsSafe(player, root.Position) and not isAboveWave(character, humanoid, root, height) then
-				hit[player] = true
-				local lostCarry = bases.DropCarry(player)
-				local penalty = math.floor(state.cash * config.WaveCashPenalty * 100 + 0.5) / 100
-				state.cash -= penalty
-				economy.Sync(player)
-				character:PivotTo(bases.Spawn(player))
-				root.AssemblyLinearVelocity = Vector3.zero
-				root.AssemblyAngularVelocity = Vector3.zero
-				events.Feedback:FireClient(player, ("Washed out%s · -$%.2f"):format(lostCarry and " and lost your brainrot" or "", penalty))
+			if root and not baseManager.IsInOwnBase(player, root.Position) then
+				local crossed = root.Position.Z >= previousZ and root.Position.Z <= currentZ
+				local belowWave = root.Position.Y <= height + 2
+				if crossed and belowWave then
+					baseManager.ClearCarry(player)
+					economy.ApplyCaughtPenalty(player)
+				end
 			end
 		end
-		previousX = x
+		previousZ = currentZ
+		RunService.Heartbeat:Wait()
 	end
-	wall:Destroy()
+	wave:Destroy()
 end
 
-function WaveEvent.Start(world, config, economy, bases, events)
+function WaveEvent.Start(bases, economyService, remoteFolder)
+	baseManager = bases
+	economy = economyService
+	remotes = remoteFolder
+	Players.PlayerAdded:Connect(function(player)
+		task.delay(1, function()
+			if player.Parent == Players and remotes.WaveStatus then
+				local remaining = math.max(0, phaseEndsAt - os.clock())
+				remotes.WaveStatus:FireClient(player, currentPhase, remaining, currentHeight)
+			end
+		end)
+	end)
 	task.spawn(function()
 		local cycle = 0
 		while true do
 			cycle += 1
-			local height = config.WaveHeights[math.min(cycle, #config.WaveHeights)]
-			setPhase(world, events, "CALM", config.CalmSeconds, height, cycle)
-			task.wait(config.CalmSeconds)
-			setPhase(world, events, "WARNING", config.WarningSeconds, height, cycle)
-			task.wait(config.WarningSeconds)
-			setPhase(world, events, "WAVE", config.WaveCrossSeconds, height, cycle)
-			sweep(world, config, height, economy, bases, events)
+			local height = heightForCycle(cycle)
+			announce("CALM", Data.WavePhases.Calm, height)
+			task.wait(Data.WavePhases.Calm)
+			announce("WARNING", Data.WavePhases.Warning, height)
+			if remotes.WaveWarning then remotes.WaveWarning:FireAllClients(height) end
+			task.wait(math.max(0, Data.WavePhases.Warning - 2))
+			if remotes.CameraShake then remotes.CameraShake:FireAllClients(1.5, 0.45) end
+			task.wait(math.min(2, Data.WavePhases.Warning))
+			sweep(height)
 		end
 	end)
 end
-
 
 return WaveEvent

@@ -1,29 +1,10 @@
 {
-  "tour": 1,
-  "steps": [
-    {
-      "screenshot": "1-cover.png",
-      "keys": ["W"],
-      "wait_ms": 1000,
-      "call": "Climb either mid-island tower. During the warning, zoom out and turn toward the ocean. Capture as the foam crest reaches the beach."
-    },
-    {
-      "screenshot": "2-base.png",
-      "keys": ["E", "W"],
-      "call": "Catch and place three of the same species on separate pads, then frame the fused brainrot alongside another placed brainrot."
-    },
-    {
-      "screenshot": "3-wave.png",
-      "keys": [
-        "E",
-        "W"
-      ],
-      "call": "Wait at the ocean end of the belt during the warning. Press E to catch, then run toward the bases. Turn the camera back toward the ocean while you run."
-    },
-    {
-      "screenshot": "4-beach.png",
-      "keys": ["W"],
-      "call": "Walk to the west side of the beach during calm. Frame the orange lifeguard roof and palms in the foreground with the offshore buoys and clouds behind them."
-    }
+  "title": "Escape the Brainrot Tsunami",
+  "stops": [
+    { "name": "Your Base", "description": "Collect cash from placed brainrots and protect your six pads." },
+    { "name": "Offer Belt", "description": "Buy a rarity-rolled brainrot, carry it home, and place it." },
+    { "name": "Sandy Beach", "description": "Explore the island edge, then race back before the next wave." },
+    { "name": "High Ground", "description": "Climb the central hill when the tsunami warning begins." },
+    { "name": "Fusion Corner", "description": "Fuse three matching brainrots on your pads into a higher tier." }
   ]
 }

@@ -1,94 +1,36 @@
--- Rojo mounts the server modules as children of this script.
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local WorldBuilder = require(script.Parent.WorldBuilder)
+local Economy = require(script.Parent.Economy)
+local BaseManager = require(script.Parent.BaseManager)
+local Spawner = require(script.Parent.Spawner)
+local WaveEvent = require(script.Parent.WaveEvent)
 
-local WorldBuilder = require(script:WaitForChild("WorldBuilder"))
-local CharacterFactory = require(script:WaitForChild("CharacterFactory"))
-local Economy = require(script:WaitForChild("Economy"))
-local Bases = require(script:WaitForChild("BaseManager"))
-local Spawner = require(script:WaitForChild("Spawner"))
-local WaveEvent = require(script:WaitForChild("WaveEvent"))
-
--- Parent the folder after all event names are available to clients.
-local remotes = Instance.new("Folder")
-remotes.Name = "TsunamiEvents"
-local events = {}
-for _, name in ipairs({"Feedback", "Warning", "Impact", "Income", "Fusion"}) do
-	local remote = Instance.new("RemoteEvent")
-	remote.Name = name
-	remote.Parent = remotes
-	events[name] = remote
+local remoteFolder = ReplicatedStorage:FindFirstChild("BrainrotRemotes")
+if not remoteFolder then
+	remoteFolder = Instance.new("Folder")
+	remoteFolder.Name = "BrainrotRemotes"
+	remoteFolder.Parent = ReplicatedStorage
 end
-remotes.Parent = ReplicatedStorage
 
-local Data = WorldBuilder.Data
+local remoteNames = {
+	"CashChanged", "BuySpeed", "Rebirth", "Toast", "WaveStatus", "WaveWarning",
+	"Caught", "PurchaseSparkle", "CameraShake",
+}
+local remotes = {}
+for _, name in ipairs(remoteNames) do
+	local remote = remoteFolder:FindFirstChild(name)
+	if not remote then
+		remote = Instance.new("RemoteEvent")
+		remote.Name = name
+		remote.Parent = remoteFolder
+	end
+	remotes[name] = remote
+end
+
 local world = WorldBuilder.Build()
-Economy.Init(Data, events)
-Bases.Init(Data, Economy, CharacterFactory, events, world)
+Economy.Start(remotes, BaseManager.GetPlaced)
+BaseManager.Start(world, Economy, remotes)
+Spawner.Start(world, Economy, BaseManager, remotes)
+WaveEvent.Start(BaseManager, Economy, remotes)
 
-local function atPrompt(player, prompt)
-	local character = player.Character
-	local root = character and character:FindFirstChild("HumanoidRootPart")
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	return root and humanoid and humanoid.Health > 0 and (root.Position - prompt.Parent.Position).Magnitude <= 12
-end
-
-world.speedPrompt.Triggered:Connect(function(player)
-	if atPrompt(player, world.speedPrompt) then Economy.BuySpeed(player) end
-end)
-
-world.rebirthPrompt.Triggered:Connect(function(player)
-	local state = Economy.Players[player]
-	if not state or not atPrompt(player, world.rebirthPrompt) then return end
-	if state.cash < Data.RebirthCost then
-		events.Feedback:FireClient(player, "You need $25,000 to rebirth")
-		return
-	end
-	Bases.ClearCollection(player)
-	state.cash = Data.StartCash
-	state.rebirths += 1
-	state.multiplier = 1 + state.rebirths * Data.RebirthMultiplierStep
-	for index in ipairs(Data.Cast) do
-		player:SetAttribute("Owned_" .. index, nil)
-	end
-	Economy.Sync(player)
-	events.Feedback:FireClient(player, ("Rebirth complete · %.1fx income"):format(state.multiplier))
-end)
-
-local function onPlayer(player)
-	if player.Parent ~= Players or Economy.Players[player] then return end
-	Economy.AddPlayer(player)
-	Bases.Assign(player)
-	-- Players without a plot start at the lobby spawn.
-	player.RespawnLocation = Bases.SpawnLocation(player)
-	player.CharacterAdded:Connect(function(character)
-		local humanoid = character:WaitForChild("Humanoid")
-		character:WaitForChild("HumanoidRootPart")
-		if player.Character ~= character or not Economy.Players[player] then return end
-		Economy.ApplySpeed(player)
-		humanoid.Died:Connect(function()
-			Bases.DropCarry(player)
-			task.delay(Players.RespawnTime, function()
-				if player.Parent == Players and player.Character == character then
-					player:LoadCharacterAsync()
-				end
-			end)
-		end)
-	end)
-	player:LoadCharacterAsync()
-end
-
-Players.PlayerRemoving:Connect(function(player)
-	if not Economy.Players[player] then return end
-	Bases.Release(player)
-	Economy.Players[player] = nil
-end)
-Players.PlayerAdded:Connect(onPlayer)
-for _, player in ipairs(Players:GetPlayers()) do
-	task.spawn(onPlayer, player)
-end
-
--- Start the game loops after connecting the player lifecycle handlers.
-Economy.Start()
-Spawner.Start(Data, world, Economy, CharacterFactory, events)
-WaveEvent.Start(world, Data.Wave, Economy, Bases, events)
+print("Brainrot Tsunami Escape services started")

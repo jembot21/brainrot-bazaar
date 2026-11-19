@@ -1,54 +1,38 @@
-// Package the Brainrot Tsunami Escape place and source for the competition hand-in.
-import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { buildDossier } from './vendor/makefun-roblox.ts';
+import { copyFile, cp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { buildDossier } from "./vendor/makefun-roblox.ts";
 
-const projectDirectory = fileURLToPath(new URL('.', import.meta.url));
-const outputDirectory = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
-
-const playPath = join(projectDirectory, 'PLAY.json');
-const playData = JSON.parse(readFileSync(playPath, 'utf-8'));
-const placeId = playData?.place_id;
-if (!Number.isSafeInteger(placeId) || placeId <= 0) {
-	throw new Error('Refusing hand-in: PLAY.json must name a published Roblox place (place 0 is the starter placeholder).');
+const root = process.cwd();
+const playPath = join(root, "PLAY.json");
+const play = JSON.parse(await readFile(playPath, "utf8")) as { place_id?: unknown };
+if (!Number.isInteger(play.place_id) || (play.place_id as number) <= 0) {
+  throw new Error("PLAY.json must contain a positive integer place_id");
 }
 
-const placeFile = join(projectDirectory, 'game.rbxl');
-if (!existsSync(placeFile)) {
-	throw new Error('Build game.rbxl with Rojo before running the hand-in.');
+const gamePath = join(root, "game.rbxl");
+if (!existsSync(gamePath)) {
+  throw new Error("game.rbxl must exist before building the dossier");
 }
 
-mkdirSync(outputDirectory, { recursive: true });
+const output = resolve(process.env.MAKEFUN_OUTPUT_DIR ?? "/output");
+await mkdir(output, { recursive: true });
+const screenshotsPath = join(root, "screenshots");
+const screenshotsCopy = existsSync(screenshotsPath)
+  ? cp(screenshotsPath, join(output, "screenshots"), { recursive: true, force: true })
+  : mkdir(join(output, "screenshots"), { recursive: true });
+await Promise.all([
+  copyFile(gamePath, join(output, "game.rbxl")),
+  copyFile(playPath, join(output, "PLAY.json")),
+  cp(join(root, "src"), join(output, "src"), { recursive: true }),
+  screenshotsCopy,
+]);
 
-copyFileSync(placeFile, join(outputDirectory, 'game.rbxl'));
-copyFileSync(playPath, join(outputDirectory, 'PLAY.json'));
-
-// Exclude dotfiles and hidden folders at all directory levels during packaging.
-const visibleEntry = (source: string) => !basename(source).startsWith('.');
-
-cpSync(join(projectDirectory, 'src'), join(outputDirectory, 'src'), {
-	recursive: true,
-	filter: visibleEntry,
+const dossier = await buildDossier({
+  outputDir: output,
+  gamePath: join(output, "game.rbxl"),
+  playPath: join(output, "PLAY.json"),
+  sourceDir: join(output, "src"),
+  screenshotsDir: join(output, "screenshots"),
 });
-
-const outputScreenshots = join(outputDirectory, 'screenshots');
-mkdirSync(outputScreenshots, { recursive: true });
-
-const srcScreenshots = join(projectDirectory, 'screenshots');
-if (existsSync(srcScreenshots)) {
-	cpSync(srcScreenshots, outputScreenshots, {
-		recursive: true,
-		filter: visibleEntry,
-	});
-}
-
-const dossierBytes = buildDossier(outputDirectory, {
-	text_max_bytes: 65536,
-	screenshots: { max: 4, max_bytes: 262144 },
-	max_instances: 500000,
-	scripts_max_source_bytes: 8388608,
-	scripts_max_path_chars: 1048576,
-});
-
-writeFileSync(join(outputDirectory, 'dossier.json'), dossierBytes);
+await writeFile(join(output, "dossier.json"), JSON.stringify(dossier, null, 2) + "\n");

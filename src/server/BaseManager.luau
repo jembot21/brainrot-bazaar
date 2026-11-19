@@ -1,229 +1,305 @@
--- Base assignments associate players with the plots built by WorldBuilder.
 local Players = game:GetService("Players")
+local Data = require(game:GetService("ReplicatedStorage").Shared.BrainrotData)
+local CharacterFactory = require(script.Parent.CharacterFactory)
 
-local Bases = {Assigned = {}}
+local BaseManager = {}
+local plots = {}
+local playerPlots = {}
+local carried = {}
+local economy
+local remotes
 
-local function inRange(player, position, range)
+local function toast(player, message)
+	if remotes and remotes.Toast then
+		remotes.Toast:FireClient(player, message)
+	end
+end
+
+local function getPadBrainrot(pad)
+	for _, child in ipairs(pad:GetChildren()) do
+		if child:IsA("Model") and child:GetAttribute("Species") then
+			return child
+		end
+	end
+	return nil
+end
+
+local function padList(plot)
+	local pads = {}
+	for _, descendant in ipairs(plot.Model:GetDescendants()) do
+		if descendant:IsA("BasePart") and descendant:GetAttribute("PadIndex") then
+			table.insert(pads, descendant)
+		end
+	end
+	table.sort(pads, function(a, b)
+		return a:GetAttribute("PadIndex") < b:GetAttribute("PadIndex")
+	end)
+	return pads
+end
+
+local function setAnchored(model, anchored)
+	for _, descendant in ipairs(model:GetDescendants()) do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = anchored
+			descendant.CanCollide = false
+		end
+	end
+end
+
+local function attachCarry(player, model)
 	local character = player.Character
-	local root = character and character:FindFirstChild("HumanoidRootPart")
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	return root and humanoid and humanoid.Health > 0 and (root.Position - position).Magnitude <= range
-end
-
-local function placedAction(plot)
-	return plot.lockUntil > time() and "Sell · Base Locked" or "Sell / Steal"
-end
-
-local function updateSign(plot)
-	local title = "OPEN PLOT"
-	if plot.owner then
-		local status = plot.lockUntil > time() and "LOCKED" or "OPEN"
-		title = plot.owner.DisplayName .. "\n" .. status
-		for _, item in pairs(Bases.Economy.Players[plot.owner].placed) do
-			item.prompt.ActionText = placedAction(plot)
+	local head = character and character:FindFirstChild("Head")
+	local primary = model.PrimaryPart
+	if not head or not primary then
+		model.Parent = workspace:FindFirstChild("BrainrotIsland")
+		model:PivotTo(player.Character and player.Character:GetPivot() or CFrame.new())
+		return false
+	end
+	local oldPrompt = model:FindFirstChild("PickupPrompt", true)
+	if oldPrompt then oldPrompt:Destroy() end
+	model.Parent = character
+	setAnchored(model, false)
+	for _, child in ipairs(model:GetChildren()) do
+		if child:IsA("BasePart") and child ~= primary then
+			local weld = Instance.new("WeldConstraint")
+			weld.Part0 = primary
+			weld.Part1 = child
+			weld.Parent = primary
 		end
 	end
-	for _, surface in ipairs(plot.board:GetChildren()) do
-		if surface:IsA("SurfaceGui") then
-			surface:FindFirstChildOfClass("TextLabel").Text = title
+	primary.CFrame = head.CFrame * CFrame.new(0, 2.15, 0)
+	local weld = Instance.new("WeldConstraint")
+	weld.Name = "CarryWeld"
+	weld.Part0 = head
+	weld.Part1 = primary
+	weld.Parent = primary
+	model:SetAttribute("CarriedBy", player.UserId)
+	carried[player] = model
+	return true
+end
+
+local function place(player, pad)
+	local plot = playerPlots[player]
+	local item = carried[player]
+	if not plot or not item then
+		return false
+	end
+	local speciesName = item:GetAttribute("Species")
+	if pad:GetAttribute("PlotIndex") ~= plot.Index or pad:GetAttribute("Occupied") then
+		return false
+	end
+	local primary = item.PrimaryPart
+	if not primary then return false end
+	for _, descendant in ipairs(item:GetDescendants()) do
+		if descendant:IsA("WeldConstraint") then descendant:Destroy() end
+	end
+	item.Parent = pad
+	setAnchored(item, true)
+	item:PivotTo(pad.CFrame * CFrame.new(0, 1.15, 0))
+	item:SetAttribute("CarriedBy", nil)
+	item:SetAttribute("OwnerUserId", player.UserId)
+	pad:SetAttribute("Occupied", true)
+	pad:SetAttribute("LockedUntil", os.clock() + Data.PadLockSeconds)
+	carried[player] = nil
+	if remotes and remotes.PurchaseSparkle then remotes.PurchaseSparkle:FireAllClients(item:GetPivot().Position) end
+	local fused = BaseManager.TryFusion(player)
+	if not fused then
+		local matching = 0
+		for _, placed in ipairs(BaseManager.GetPlaced(player)) do
+			if placed:GetAttribute("Species") == speciesName then matching += 1 end
 		end
+		if matching == 2 then toast(player, "Fusion hint: place one more " .. speciesName .. " on your pads!") end
 	end
+	return true
 end
 
-function Bases.Init(data, economy, factory, events, world)
-	Bases.Data = data
-	Bases.Economy = economy
-	Bases.Factory = factory
-	Bases.Events = events
-	Bases.World = world
-	Bases.ByRarity = {}
-	for _, rarity in ipairs(data.RarityOrder) do
-		Bases.ByRarity[rarity] = {}
+local function take(player, pad)
+	local model = getPadBrainrot(pad)
+	if not model or carried[player] then return false end
+	local ownerId = model:GetAttribute("OwnerUserId")
+	local isOwner = ownerId == player.UserId
+	local unlocked = os.clock() >= (pad:GetAttribute("LockedUntil") or 0)
+	if not isOwner and not unlocked then
+		toast(player, "That brainrot is locked for a little longer!")
+		return false
 	end
-	for _, definition in ipairs(data.Cast) do
-		table.insert(Bases.ByRarity[definition.rarity], definition)
-	end
-	for _, plot in ipairs(world.plots) do
-		plot.lockUntil = 0
-		plot.lockPrompt.Enabled = false
-		plot.lockPrompt.Triggered:Connect(function(player)
-			if player ~= plot.owner or not inRange(player, plot.board.Position, 12) then return end
-			plot.lockUntil = plot.lockUntil > time() and 0 or time() + data.BaseLockSeconds
-			local expires = plot.lockUntil
-			updateSign(plot)
-			events.Feedback:FireClient(player, expires == 0 and "Base unlocked" or ("Base locked for %d seconds"):format(data.BaseLockSeconds))
-			if expires > 0 then
-				task.delay(data.BaseLockSeconds, function()
-					-- An older timer must leave a newer lock in place.
-					if plot.lockUntil == expires then
-						plot.lockUntil = 0
-						updateSign(plot)
-					end
-				end)
-			end
-		end)
-		for _, pad in ipairs(plot.pads) do
-			pad.Touched:Connect(function(hit)
-				local owner = plot.owner
-				if owner and owner.Character and hit:IsDescendantOf(owner.Character) and inRange(owner, pad.Position, 7) then
-					Bases.Place(owner, pad)
-				end
-			end)
-		end
-	end
+	pad:SetAttribute("Occupied", false)
+	model.Parent = workspace
+	return attachCarry(player, model)
 end
 
-function Bases.Assign(player)
-	if Bases.Assigned[player] then return end
-	for _, plot in ipairs(Bases.World.plots) do
-		if not plot.owner then
-			plot.owner = player
-			Bases.Assigned[player] = plot
-			player.RespawnLocation = plot.spawn
-			plot.lockPrompt.Enabled = true
-			updateSign(plot)
-			return
-		end
-	end
-end
-
-function Bases.SpawnLocation(player)
-	local plot = Bases.Assigned[player]
-	return plot and plot.spawn or Bases.World.lobbySpawn
-end
-
-function Bases.Spawn(player)
-	return Bases.SpawnLocation(player).CFrame * CFrame.new(0, 4, 0)
-end
-
-function Bases.IsSafe(player, position)
-	local plot = Bases.Assigned[player]
-	if not plot then return false end
-	local offset = plot.floor.CFrame:PointToObjectSpace(position)
-	return math.abs(offset.X) <= plot.floor.Size.X / 2
-		and math.abs(offset.Z) <= plot.floor.Size.Z / 2
-		and offset.Y >= 0 and offset.Y <= 24
-end
-
-function Bases.Register(player, pad, item)
-	local state = Bases.Economy.Players[player]
-	state.placed[pad] = item
-	player:SetAttribute("Owned_" .. table.find(Bases.Data.Cast, item.definition), true)
-	item.model:PivotTo(pad.CFrame * CFrame.new(0, 2.3, 0) * CFrame.Angles(0, math.pi / 2, 0))
-	item.prompt.ActionText = placedAction(Bases.Assigned[player])
-	item.prompt.ObjectText = item.definition.name
-	item.prompt.Enabled = true
-	item.connection = item.prompt.Triggered:Connect(function(visitor)
-		if state.placed[pad] ~= item or not inRange(visitor, item.prompt.Parent.Position, 13) then return end
-		local visitorState = Bases.Economy.Players[visitor]
-		if not visitorState then return end
-		if visitor == player then
-			state.placed[pad] = nil
-			state.cash += item.definition.price * Bases.Data.SellReturn
-			item.model:Destroy()
-			Bases.Events.Feedback:FireClient(player, "Sold " .. item.definition.name)
-		elseif Bases.Assigned[player].lockUntil > time() then
-			Bases.Events.Feedback:FireClient(visitor, "This base is locked")
-			return
-		elseif visitorState.carry or not Bases.Assigned[visitor] then
-			return
+local function makePadPrompt(pad)
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "PadPrompt"
+	prompt.ActionText = "Place / Take"
+	prompt.ObjectText = "Brainrot Pad"
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.HoldDuration = 0.2
+	prompt.MaxActivationDistance = 11
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = pad
+	prompt.Triggered:Connect(function(player)
+		if carried[player] then
+			place(player, pad)
 		else
-			state.placed[pad] = nil
-			item.connection:Disconnect()
-			item.connection = nil
-			item.prompt.Enabled = false
-			visitorState.carry = item
-			Bases.Events.Feedback:FireClient(visitor, "Stolen! Get back to your base")
-			Bases.Events.Feedback:FireClient(player, item.definition.name .. " was stolen!")
+			take(player, pad)
 		end
-		Bases.Economy.Sync(player)
 	end)
 end
 
-function Bases.Fuse(player, definition)
-	local state = Bases.Economy.Players[player]
-	local pads = Bases.Assigned[player].pads
-	local count = Bases.Data.Fusion.FuseCount
-	while true do
-		-- Pad order determines which slot receives the fused model.
-		local matches = {}
-		local bestMutation
-		for _, pad in ipairs(pads) do
-			local item = state.placed[pad]
-			if item and item.definition == definition then
-				table.insert(matches, pad)
-				if item.mutation and (not bestMutation or item.mutation.multiplier > bestMutation.multiplier) then
-					bestMutation = item.mutation
+local function assign(player)
+	for _, plot in ipairs(plots) do
+		if not plot.Owner then
+			plot.Owner = player
+			plot.Model:SetAttribute("OwnerUserId", player.UserId)
+			playerPlots[player] = plot
+			local spawn = plot.Spawn
+			local function placeCharacter(character)
+				local root = character:WaitForChild("HumanoidRootPart", 8)
+				if root and playerPlots[player] == plot then
+					root.CFrame = spawn.CFrame + Vector3.new(0, 4, 0)
+					local humanoid = character:FindFirstChildOfClass("Humanoid")
+					if humanoid then
+						local state = economy.GetState(player)
+						humanoid.WalkSpeed = 16 + ((state and state.SpeedTier or 0) * Data.SpeedPerTier)
+					end
 				end
-				if #matches == count then break end
+			end
+			player.CharacterAdded:Connect(placeCharacter)
+			if player.Character then task.spawn(placeCharacter, player.Character) end
+			return plot
+		end
+	end
+	toast(player, "All island plots are full.")
+	return nil
+end
+
+function BaseManager.Start(world, economyService, remoteFolder)
+	economy = economyService
+	remotes = remoteFolder
+	plots = {}
+	for _, child in ipairs(world.Root:GetChildren()) do
+		if child:IsA("Model") and child:GetAttribute("PlotIndex") then
+			local spawn = child:FindFirstChild("PlotSpawn")
+			local floor = child:FindFirstChild("BaseFloor")
+			table.insert(plots, {
+				Index = child:GetAttribute("PlotIndex"),
+				Model = child,
+				Center = floor and floor.Position or child:GetPivot().Position,
+				Spawn = spawn,
+			})
+		end
+	end
+	table.sort(plots, function(a, b) return a.Index < b.Index end)
+	for _, plot in ipairs(plots) do
+		for _, pad in ipairs(padList(plot)) do makePadPrompt(pad) end
+	end
+	Players.PlayerAdded:Connect(assign)
+	Players.PlayerRemoving:Connect(function(player)
+		local plot = playerPlots[player]
+		if plot then
+			plot.Owner = nil
+			plot.Model:SetAttribute("OwnerUserId", nil)
+			for _, pad in ipairs(padList(plot)) do
+				local model = getPadBrainrot(pad)
+				if model then model:Destroy() end
+				pad:SetAttribute("Occupied", false)
 			end
 		end
-		if #matches < count then return end
-
-		local order = Bases.Data.RarityOrder
-		local nextRarity = order[table.find(order, definition.rarity) + 1]
-		if nextRarity then
-			local rank = table.find(Bases.ByRarity[definition.rarity], definition)
-			local nextSpecies = Bases.ByRarity[nextRarity]
-			definition = nextSpecies[rank] or nextSpecies[1]
+		if carried[player] then carried[player]:Destroy() end
+		carried[player] = nil
+		playerPlots[player] = nil
+	end)
+	for _, player in ipairs(Players:GetPlayers()) do
+		assign(player)
+	end
+	for _, stand in ipairs(world.Root:GetChildren()) do
+		if stand:IsA("BasePart") and stand:GetAttribute("ShopType") == "Sell" then
+			local prompt = Instance.new("ProximityPrompt")
+			prompt.ActionText = "Sell Carried Brainrot"
+			prompt.ObjectText = "Trade Stand"
+			prompt.KeyboardKeyCode = Enum.KeyCode.E
+			prompt.MaxActivationDistance = 12
+			prompt.Parent = stand
+			prompt.Triggered:Connect(function(player) BaseManager.SellCarry(player) end)
 		end
-		for _, pad in ipairs(matches) do
-			state.placed[pad].model:Destroy()
-			state.placed[pad] = nil
-		end
-		local fused = Bases.Factory.Create(definition, bestMutation)
-		fused.model.Parent = Bases.World.folder
-		Bases.Register(player, matches[1], fused)
-		Bases.Events.Fusion:FireClient(player, definition.name, bestMutation and bestMutation.name or "")
 	end
 end
 
-function Bases.Place(player, pad)
-	local state = Bases.Economy.Players[player]
-	if not state or not state.carry or state.placed[pad] then return end
-	local item = state.carry
-	state.carry = nil
-	Bases.Register(player, pad, item)
-	Bases.Fuse(player, item.definition)
-	Bases.Economy.Sync(player)
-	Bases.Events.Feedback:FireClient(player, "Placed " .. item.definition.name)
+function BaseManager.GetPlaced(player)
+	local plot = playerPlots[player]
+	local result = {}
+	if not plot then return result end
+	for _, pad in ipairs(padList(plot)) do
+		local model = getPadBrainrot(pad)
+		if model then table.insert(result, model) end
+	end
+	return result
 end
 
-function Bases.DropCarry(player)
-	local state = Bases.Economy.Players[player]
-	if state and state.carry then
-		state.carry.model:Destroy()
-		state.carry = nil
-		return true
+function BaseManager.GiveCarry(player, model)
+	if carried[player] or not playerPlots[player] then return false end
+	return attachCarry(player, model)
+end
+
+function BaseManager.ClearCarry(player)
+	local model = carried[player]
+	if model then model:Destroy() end
+	carried[player] = nil
+end
+
+function BaseManager.SellCarry(player)
+	local model = carried[player]
+	if not model then toast(player, "Carry a brainrot to the trade stand first."); return false end
+	local value = economy.SellValue(model:GetAttribute("Price") or 0)
+	BaseManager.ClearCarry(player)
+	economy.AddCash(player, value)
+	toast(player, "Sold for $" .. value .. "!")
+	return true
+end
+
+function BaseManager.TryFusion(player)
+	local plot = playerPlots[player]
+	if not plot then return false end
+	local groups = {}
+	for _, pad in ipairs(padList(plot)) do
+		local model = getPadBrainrot(pad)
+		if model then
+			local name = model:GetAttribute("Species")
+			groups[name] = groups[name] or {}
+			table.insert(groups[name], { Pad = pad, Model = model })
+		end
+	end
+	for speciesName, group in pairs(groups) do
+		if #group >= Data.FusionCount then
+			local oldSpecies = Data.SpeciesByName[speciesName]
+			local nextTier = math.min(oldSpecies.Tier + 1, #Data.TierPrice)
+			if nextTier == oldSpecies.Tier then return false end
+			local choices = {}
+			for _, species in ipairs(Data.Species) do
+				if species.Tier == nextTier then table.insert(choices, species) end
+			end
+			if #choices == 0 then return false end
+			for i = 1, Data.FusionCount do group[i].Model:Destroy(); group[i].Pad:SetAttribute("Occupied", false) end
+			local target = group[1].Pad
+			local fused = CharacterFactory.Create(choices[math.random(1, #choices)].Name, "Normal")
+			fused.Parent = target
+			fused:PivotTo(target.CFrame * CFrame.new(0, 1.15, 0))
+			fused:SetAttribute("OwnerUserId", player.UserId)
+			target:SetAttribute("Occupied", true)
+			target:SetAttribute("LockedUntil", os.clock() + Data.PadLockSeconds)
+			toast(player, "Fusion! Three " .. speciesName .. " became " .. fused:GetAttribute("Species") .. ".")
+			return true
+		end
 	end
 	return false
 end
 
-function Bases.ClearCollection(player)
-	Bases.DropCarry(player)
-	local state = Bases.Economy.Players[player]
-	for _, item in pairs(state.placed) do
-		item.model:Destroy()
-	end
-	table.clear(state.placed)
+function BaseManager.IsInOwnBase(player, position)
+	local plot = playerPlots[player]
+	if not plot then return false end
+	local center = plot.Center
+	return math.abs(position.X - center.X) <= 26 and math.abs(position.Z - center.Z) <= 23
 end
 
-function Bases.Release(player)
-	Bases.ClearCollection(player)
-	local plot = Bases.Assigned[player]
-	if not plot then return end
-	Bases.Assigned[player] = nil
-	plot.owner = nil
-	plot.lockUntil = 0
-	plot.lockPrompt.Enabled = false
-	updateSign(plot)
-	for _, waiting in ipairs(Players:GetPlayers()) do
-		if waiting ~= player and Bases.Economy.Players[waiting] and not Bases.Assigned[waiting] then
-			Bases.Assign(waiting)
-			break
-		end
-	end
-end
-
-
-return Bases
+return BaseManager
