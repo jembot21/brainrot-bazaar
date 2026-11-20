@@ -1,4 +1,9 @@
-node_modules
-*.rbxl
-*.rbxlx
+# Local operating-system metadata
 .DS_Store
+
+# Exported Roblox places
+*.rbxlx
+*.rbxl
+
+# Installed JavaScript dependencies
+node_modules
